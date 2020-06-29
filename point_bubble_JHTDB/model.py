@@ -198,7 +198,7 @@ class PointBubbleSimulation:
             v[0,...] = u[1,...] + np.array([0,0,self.v_q])
         
         # bubble acceleration and new velocity
-        a = a_bubble(u[ti+1,...],v[ti,...],velgrad[ti+1,...],dudt[ti+1,...])
+        a = a_bubble(u[ti+1,...],v[ti,...],velgrad[ti+1,...],dudt[ti+1,...],self.d,self.Cd,self.Cm,self.Cl,self.g)
         v[ti+1,...] = v[ti,...]+a*self.dt_use
         
         # new position
