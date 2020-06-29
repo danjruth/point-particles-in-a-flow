@@ -7,10 +7,10 @@ Created on Mon Jun 29 14:59:40 2020
 
 import numpy as np
 import pyJHTDB
-#from pyJHTDB.dbinfo import isotropic1024coarse
 from pyJHTDB import libJHTDB
 import pickle
 import time as time_pkg
+import os.path
 
 u_rms = 0.686
 L_int = 1.364
@@ -170,6 +170,17 @@ class PointBubbleSimulation:
         self.velgrad = res['velgrad']
         self.dudt = res['dudt']
         self.ti = res['ti']-1
+        
+    def add_data_if_existing(self,fpath_save=None):
+        if fpath_save is None:
+            fpath_save = self.fpath_save
+            
+        if os.path.isfile(fpath_save):
+            with open(fpath_save, 'rb') as handle:
+                res = pickle.load(handle)
+            self.add_data(res)
+        else:
+            print('Did not find file '+str(fpath_save))
         
     def _advance(self,ti):
         
