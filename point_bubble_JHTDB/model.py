@@ -6,10 +6,9 @@ Created on Mon Jun 29 14:59:40 2020
 """
 
 import numpy as np
-import pyJHTDB
-from pyJHTDB import libJHTDB
 import pickle
 import time as time_pkg
+from point_bubble_JHTDB import interface
 import os.path
 
 u_rms = 0.686
@@ -19,51 +18,31 @@ eta = 0.00280
 dt = 0.002
 t_max = 10
 
-lJHTDB = libJHTDB()
-lJHTDB.initialize()
-
-def get_velocity(t,x,lJHTDB=lJHTDB):
-    return lJHTDB.getData(t, point_coords=x.astype(np.float32), data_set='isotropic1024coarse', getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
-
-def myVelocityGradient(t,point_coords,delta=1e-4,lJHTDB=lJHTDB):
-    '''
-    Compute the velocity gradient numerically. Check the effect of delta, it should be around 1e-4.
-    '''
-    points_plus = np.zeros((len(point_coords),3,2))
-    for i in np.arange(3):
-        points_plus[:,i,0] = point_coords[:,i]-delta
-        points_plus[:,i,1] = point_coords[:,i]+delta
-    
-    points_flat = np.array([[points_plus[:,0,0],point_coords[:,1],point_coords[:,2]],
-                            [points_plus[:,0,1],point_coords[:,1],point_coords[:,2]],
-                            [point_coords[:,0],points_plus[:,1,0],point_coords[:,2]],
-                            [point_coords[:,0],points_plus[:,1,1],point_coords[:,2]],
-                            [point_coords[:,0],point_coords[:,1],points_plus[:,2,0]],
-                            [point_coords[:,0],point_coords[:,1],points_plus[:,2,1]]])
-    
-    points_flat = np.moveaxis(points_flat,-1,0)    
-    points_flat = np.reshape(points_flat, (len(point_coords)*6,3))
-
-    u_flat = get_velocity(t,points_flat,lJHTDB=lJHTDB)
-    u = np.reshape(u_flat,(len(point_coords),6,3))
-    
-    vel_grad = np.zeros((len(point_coords),3,3)) # [point,component,grad_dir]    
-    for j in np.arange(len(point_coords)):
-        # for each point in time        
-        for i in np.arange(3):
-            # for each velocity direction
-            vel_grad[j,i,0] = (u[j,1,i]-u[j,0,i])/(2*delta)
-            vel_grad[j,i,1] = (u[j,3,i]-u[j,2,i])/(2*delta)
-            vel_grad[j,i,2] = (u[j,5,i]-u[j,4,i])/(2*delta)
-            
-    return vel_grad
-
 def get_vorticity(velgrad):
     vort = np.zeros((len(velgrad),3)) # 
     vort[:,0] = velgrad[...,2,1] - velgrad[...,1,2]
     vort[:,1] = velgrad[...,0,2] - velgrad[...,2,0]
     vort[:,2] = velgrad[...,1,0] - velgrad[...,0,1]
     return vort
+
+def calc_pressure_force(u,velgrad,dudt,d,Cm):
+    # pressure force and added mass, in terms of the carrier velocity field
+    u_times_deldotu = np.array([np.sum(velgrad[...,0,:]*u,axis=-1),
+                                np.sum(velgrad[...,1,:]*u,axis=-1),
+                                np.sum(velgrad[...,2,:]*u,axis=-1)]).T
+    press = (1+Cm) * (d/2)**3*4./3*np.pi * (dudt + u_times_deldotu)
+    return press
+
+def calc_grav_force(g,d):
+    return g*(d/2)**3*4./3*np.pi * np.array([0,0,1])
+
+def calc_drag_force(slip,d,Cd):
+    drag = -1 * Cd*0.5*np.pi*(d/2)**2 * (slip.T*np.linalg.norm(slip,axis=-1)).T
+    return drag
+
+def calc_lift_force(slip,vort,d,Cl):
+    lift = -1 * Cl * np.cross(slip,vort) * (d/2)**3*4./3*np.pi
+    return lift
 
 def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g):
     '''
@@ -74,20 +53,17 @@ def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g):
     vort = get_vorticity(velgrad)
     slip = v - u
     
-    # pressure force and added mass, in terms of the carrier velocity field
-    u_times_deldotu = np.array([np.sum(velgrad[...,0,:]*u,axis=-1),
-                                np.sum(velgrad[...,1,:]*u,axis=-1),
-                                np.sum(velgrad[...,2,:]*u,axis=-1)]).T
-    press = (1+Cm) * (d/2)**3*4./3*np.pi * (dudt + u_times_deldotu)
+    # pressure force
+    press = calc_pressure_force(u,velgrad,dudt,d,Cm)
     
     # bouyant force
-    grav = g*(d/2)**3*4./3*np.pi * np.array([0,0,1])
+    grav = calc_grav_force(g,d)
     
     # drag force    
-    drag = -1 * Cd*0.5*np.pi*(d/2)**2 * (slip.T*np.linalg.norm(slip,axis=-1)).T
+    drag = calc_drag_force(slip,d,Cd)
     
     # lift force
-    lift = -1 * Cl * np.cross(slip,vort) * (d/2)**3*4./3*np.pi
+    lift = calc_lift_force(slip,vort,d,Cl)
     
     # calculate the added mass and the bubble acceleration
     m_added = Cm*(d/2)**3*4./3*np.pi
@@ -192,17 +168,17 @@ class PointBubbleSimulation:
         velgrad = self.velgrad
         
         # liquid velocity
-        u[ti+1,...] = get_velocity(t,x[ti,...],lJHTDB=lJHTDB)
+        u[ti+1,...] = interface.get_velocity(t,x[ti,...])
         if ti==0:
             u[0,...] = u[1,...]
         
         # time velocity gradient
         delta = 1e-4
-        u_deltat = get_velocity(t+delta,x[ti,...],lJHTDB=lJHTDB)
+        u_deltat = interface.get_velocity(t+delta,x[ti,...])
         dudt[ti+1,...] = (u_deltat-u[ti+1,...])/delta # future velocity at this point minus current velocity at this point
         
         # liquid velocity gradient
-        velgrad[ti+1,...] = myVelocityGradient(t,x[ti,...])
+        velgrad[ti+1,...] = interface.myVelocityGradient(t,x[ti,...])
         
         # start the simulation with v = u + v_q
         if ti==0:
