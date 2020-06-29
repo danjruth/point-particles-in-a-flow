@@ -75,9 +75,9 @@ def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g):
     slip = v - u
     
     # pressure force and added mass, in terms of the carrier velocity field
-    u_times_deldotu = np.array([np.sum(velgrad[:,0,:]*u,axis=-1),
-                                np.sum(velgrad[:,1,:]*u,axis=-1),
-                                np.sum(velgrad[:,2,:]*u,axis=-1)]).T
+    u_times_deldotu = np.array([np.sum(velgrad[...,0,:]*u,axis=-1),
+                                np.sum(velgrad[...,1,:]*u,axis=-1),
+                                np.sum(velgrad[...,2,:]*u,axis=-1)]).T
     press = (1+Cm) * (d/2)**3*4./3*np.pi * (dudt + u_times_deldotu)
     
     # bouyant force
