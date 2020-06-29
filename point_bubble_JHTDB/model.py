@@ -44,7 +44,7 @@ def myVelocityGradient(t,point_coords,delta=1e-4,lJHTDB=lJHTDB):
     points_flat = np.moveaxis(points_flat,-1,0)    
     points_flat = np.reshape(points_flat, (len(point_coords)*6,3))
 
-    u_flat = get_velocity(t,point_coords,lJHTDB=lJHTDB)
+    u_flat = get_velocity(t,points_flat,lJHTDB=lJHTDB)
     u = np.reshape(u_flat,(len(point_coords),6,3))
     
     vel_grad = np.zeros((len(point_coords),3,3)) # [point,component,grad_dir]    
