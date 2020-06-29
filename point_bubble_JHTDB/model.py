@@ -136,7 +136,7 @@ class PointBubbleSimulation:
                      'n_bubs','dt_factor','dt_use','t','n_t',
                      'x','v','u','dudt','velgrad']
         
-        res = {attr:self.attr for attr in save_vars}
+        res = {attr:getattr(self,attr) for attr in save_vars}
         with open(fpath_save, 'wb') as handle:
             pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
@@ -223,3 +223,10 @@ class PointBubbleSimulation:
             # save, if necessary
             if (self.ti % save_every) == 0:        
                 self.save()
+                
+def load_sim_from_file(fpath):
+    with open(fpath, 'rb') as handle:
+        res = pickle.load(handle)
+    p = PointBubbleSimulation(res)
+    p.add_data(res)
+    return(p)
