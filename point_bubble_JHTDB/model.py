@@ -134,7 +134,7 @@ class PointBubbleSimulation:
                      'Cm','Cl','Cd',
                      'g','v_q','d',
                      'n_bubs','dt_factor','dt_use','t','n_t',
-                     'x','v','u','dudt','velgrad']
+                     'x','v','u','dudt','velgrad','ti']
         
         res = {attr:getattr(self,attr) for attr in save_vars}
         with open(fpath_save, 'wb') as handle:
