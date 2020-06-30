@@ -15,7 +15,7 @@ u_rms = 0.686
 L_int = 1.364
 eta = 0.00280
 
-dt = 0.002
+dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig
 t_max_turbulence = 10
 
 def get_vorticity(velgrad):
@@ -123,6 +123,7 @@ class PointBubbleSimulation:
                      'x','v','u','dudt','velgrad','ti']
         
         res = {attr:getattr(self,attr) for attr in save_vars}
+        print('Saving data to '+fpath_save)
         with open(fpath_save, 'wb') as handle:
             pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
@@ -162,6 +163,7 @@ class PointBubbleSimulation:
             fpath_save = self.fpath_save
             
         if os.path.isfile(fpath_save):
+            print('Loading data from '+fpath_save)
             with open(fpath_save, 'rb') as handle:
                 res = pickle.load(handle)
             self.add_data(res)
@@ -209,24 +211,33 @@ class PointBubbleSimulation:
         
     def run_model(self,save_every=1000,n_try_max=10):
         
+        print('running the model')
+        
         while self.ti < self.n_t:
             
             n_tried = 0
-            while n_tried < n_try_max:
+            #while n_tried < n_try_max:
+            if True:
             
-                try:            
+                #try:
+                if True:
                     # advance the simulation
                     t_start = time_pkg.time()
                     self._advance(self.ti)
-                    print('Iteration '+str(self.ti)+', time '+'{:06.4f}'.format(self.t[self.ti])+', took '+'{:01.4f}'.format(time_pkg.time()-t_start)+' s.')
+                    print('Timestep '+str(self.ti)+', time '+'{:06.4f}'.format(self.t[self.ti])+', took '+'{:01.4f}'.format(time_pkg.time()-t_start)+' s.')
                     self.ti = self.ti + 1
                     
-                except:
+                else:
+                #except:
                     n_tried = n_tried+1
+                    print('Pausing execution for 5 s...')
+                    time_pkg.sleep(5)
             
             # save, if necessary
-            if (self.ti % save_every) == 0:        
+            if (self.ti % save_every) == 0:                
                 self.save()
+                
+        self.save()
                 
 def load_sim_from_file(fpath):
     with open(fpath, 'rb') as handle:
@@ -234,3 +245,27 @@ def load_sim_from_file(fpath):
     p = PointBubbleSimulation(res)
     p.add_data(res)
     return(p)
+
+default_params = {'beta':0.5,
+                 'A':0.1,
+                 'Cm':0.5,
+                 'Cd':0.5,
+                 'Cl':0.5,
+                 'n_bubs':500,
+                 'dt_factor':0.5,}
+def run_model_default_params(changed_params):
+    '''
+    Specify and run a model which differs from the default parameters by changed_params
+    '''
+    
+    params = default_params.copy()
+    for key in list(changed_params.keys()):
+        params[key] = changed_params[key]
+        
+    m = PointBubbleSimulation(params)
+    
+    m.init_sim()
+    m.add_data_if_existing()
+    m.run_model()
+
+    
