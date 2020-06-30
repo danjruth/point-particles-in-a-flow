@@ -16,7 +16,7 @@ L_int = 1.364
 eta = 0.00280
 
 dt = 0.002
-t_max = 10
+t_max_turbulence = 10
 
 def get_vorticity(velgrad):
     vort = np.zeros((len(velgrad),3)) # 
@@ -94,7 +94,17 @@ class PointBubbleSimulation:
         self.n_bubs = params['n_bubs']
         self.dt_factor = params['dt_factor']
         self.dt_use = self.dt_factor*dt
-        self.t = np.arange(0,t_max,self.dt_use)
+        
+        if 't_min' in list(params.keys()):
+            self.t_min = params['t_min']
+        else:
+            self.t_min = 0
+        if 't_max' in list(params.keys()):
+            self.t_max = params['t_max']
+        else:
+            self.t_max = t_max_turbulence
+            
+        self.t = np.arange(self.t_min,self.t_max,self.dt_use)
         self.n_t = len(self.t)
         
         if fpath_save is None:
@@ -197,15 +207,22 @@ class PointBubbleSimulation:
         self.dudt = dudt
         self.velgrad = velgrad
         
-    def run_model(self,save_every=1000):
+    def run_model(self,save_every=1000,n_try_max=10):
         
         while self.ti < self.n_t:
             
-            # advance teh simulation
-            t_start = time_pkg.time()
-            self._advance(self.ti)
-            print('Iteration '+str(self.ti)+', time '+'{:06.4f}'.format(self.t[self.ti])+', took '+'{:01.4f}'.format(time_pkg.time()-t_start)+' s.')
-            self.ti = self.ti + 1
+            n_tried = 0
+            while n_tried < n_try_max:
+            
+                try:            
+                    # advance the simulation
+                    t_start = time_pkg.time()
+                    self._advance(self.ti)
+                    print('Iteration '+str(self.ti)+', time '+'{:06.4f}'.format(self.t[self.ti])+', took '+'{:01.4f}'.format(time_pkg.time()-t_start)+' s.')
+                    self.ti = self.ti + 1
+                    
+                except:
+                    n_tried = n_tried+1
             
             # save, if necessary
             if (self.ti % save_every) == 0:        
