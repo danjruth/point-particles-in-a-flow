@@ -13,6 +13,6 @@ params = {'beta':0.5,
 m = PointBubbleSimulation(params)
 
 m.init_sim()
-#m.add_data_if_existing()
+m.add_data_if_existing()
 
 m.run_model()
