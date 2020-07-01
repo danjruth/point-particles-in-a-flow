@@ -213,7 +213,7 @@ class PointBubbleSimulation:
         
         print('running the model')
         
-        while self.ti < self.n_t:
+        while self.ti < self.n_t-1:
             
             n_tried = 0
             #while n_tried < n_try_max:
