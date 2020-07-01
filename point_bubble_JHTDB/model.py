@@ -18,7 +18,7 @@ eta = 0.00280
 dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig
 t_max_turbulence = 10
 
-data_dir = r'~/home/idies/workspace/Storage/danjruth/persistent//'
+data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
 
 def get_vorticity(velgrad):
     vort = np.zeros((len(velgrad),3)) # 
