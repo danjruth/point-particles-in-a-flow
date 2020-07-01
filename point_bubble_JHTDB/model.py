@@ -18,6 +18,8 @@ eta = 0.00280
 dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig
 t_max_turbulence = 10
 
+data_dir = r'~/home/idies/workspace/Storage/danjruth/persistent//'
+
 def get_vorticity(velgrad):
     vort = np.zeros((len(velgrad),3)) # 
     vort[:,0] = velgrad[...,2,1] - velgrad[...,1,2]
@@ -76,7 +78,7 @@ def quiescent_speed(d,g,Cd):
 
 class PointBubbleSimulation:
     
-    def __init__(self,params,fpath_save=None):
+    def __init__(self,params,fname_save=None):
         
         self.params = params
         
@@ -107,14 +109,14 @@ class PointBubbleSimulation:
         self.t = np.arange(self.t_min,self.t_max,self.dt_use)
         self.n_t = len(self.t)
         
-        if fpath_save is None:
-            self.fpath_save = 'res_beta'+'{:05.4f}'.format(self.beta)+'_A'+'{:05.4f}'.format(self.A)+'_Cm'+'{:03.2f}'.format(self.Cm)+'_Cl'+'{:03.2f}'.format(self.Cl)+'_Cd'+'{:03.2f}'.format(self.Cd)+'_dtFactor'+'{:05.4f}'.format(self.dt_factor)+'.pkl'
+        if fname_save is None:
+            self.fname_save = 'res_beta'+'{:05.4f}'.format(self.beta)+'_A'+'{:05.4f}'.format(self.A)+'_Cm'+'{:03.2f}'.format(self.Cm)+'_Cl'+'{:03.2f}'.format(self.Cl)+'_Cd'+'{:03.2f}'.format(self.Cd)+'_dtFactor'+'{:05.4f}'.format(self.dt_factor)+'.pkl'
         else:
-            self.fpath_save = fpath_save
+            self.fname_save = fname_save
             
-    def save(self,fpath_save=None):
-        if fpath_save is None:
-            fpath_save = self.fpath_save
+    def save(self,fname_save=None):
+        if fname_save is None:
+            fname_save = self.fname_save
         
         save_vars = ['beta','A',
                      'Cm','Cl','Cd',
@@ -123,8 +125,8 @@ class PointBubbleSimulation:
                      'x','v','u','dudt','velgrad','ti']
         
         res = {attr:getattr(self,attr) for attr in save_vars}
-        print('Saving data to '+fpath_save)
-        with open(fpath_save, 'wb') as handle:
+        print('Saving data to '+fname_save)
+        with open(data_dir+fname_save, 'wb') as handle:
             pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
         
@@ -158,17 +160,17 @@ class PointBubbleSimulation:
         self.dudt = res['dudt']
         self.ti = res['ti']-1
         
-    def add_data_if_existing(self,fpath_save=None):
-        if fpath_save is None:
-            fpath_save = self.fpath_save
+    def add_data_if_existing(self,fname_save=None):
+        if fname_save is None:
+            fname_save = self.fname_save
             
-        if os.path.isfile(fpath_save):
-            print('Loading data from '+fpath_save)
-            with open(fpath_save, 'rb') as handle:
+        if os.path.isfile(data_dir+fname_save):
+            print('Loading data from '+data_dir+fname_save)
+            with open(data_dir+fname_save, 'rb') as handle:
                 res = pickle.load(handle)
             self.add_data(res)
         else:
-            print('Did not find file '+str(fpath_save))
+            print('Did not find file '+str(data_dir+fname_save))
         
     def _advance(self,ti):
         
