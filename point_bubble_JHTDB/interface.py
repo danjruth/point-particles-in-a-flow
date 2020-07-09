@@ -10,7 +10,7 @@ import numpy as np
 try:
     from pyJHTDB import libJHTDB
     lJHTDB = libJHTDB()
-    lJHTDB.initialize()
+    lJHTDB.initialize(exit_on_error=False) # hopefully this will throw an error instead of just exiting?
 except ImportError:
     print('Unable to import pyJHTDB and initialize')
 

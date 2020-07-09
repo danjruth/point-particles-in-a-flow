@@ -262,19 +262,19 @@ def run_model_default_params(changed_params):
     
     model_is_done = False
     
-    while model_is_done==False:
-        try:
+    while not model_is_done:
+        
+        try:            
             params = default_params.copy()
             for key in list(changed_params.keys()):
                 params[key] = changed_params[key]
-
             m = PointBubbleSimulation(params)
-
             m.init_sim()
             m.add_data_if_existing()
             m.run_model()
             model_is_done = True
+            
         except:
-            print('Code failed, starting again')
+            print('Program failed, starting again')
 
     
