@@ -11,7 +11,7 @@ try:
     from pyJHTDB import libJHTDB
     lJHTDB = libJHTDB()
     lJHTDB.initialize()
-except:
+except ImportError:
     print('Unable to import pyJHTDB and initialize')
 
 
