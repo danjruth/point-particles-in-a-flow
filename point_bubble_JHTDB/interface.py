@@ -10,13 +10,14 @@ import numpy as np
 try:
     from pyJHTDB import libJHTDB
     lJHTDB = libJHTDB()
-    lJHTDB.initialize(exit_on_error=False) # hopefully this will throw an error instead of just exiting?
+    lJHTDB.initialize(exit_on_error=True) # hopefully this will throw an error instead of just exiting?
 except ImportError:
     print('Unable to import pyJHTDB and initialize')
 
 
 def get_velocity(t,x,lJHTDB=lJHTDB):
-    return lJHTDB.getData(t, point_coords=x.astype(np.float32), data_set='isotropic1024coarse', getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
+    #print(x.astype(np.float32))
+    return lJHTDB.getData(t, point_coords=x.copy().astype(np.float32), data_set='isotropic1024coarse', getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
 
 def myVelocityGradient(t,point_coords,delta=1e-4,lJHTDB=lJHTDB):
     '''
