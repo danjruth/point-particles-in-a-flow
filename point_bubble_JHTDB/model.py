@@ -10,6 +10,8 @@ import pickle
 import time as time_pkg
 from point_bubble_JHTDB import interface
 import os.path
+from scipy.spatial.transform import Rotation
+
 
 u_rms = 0.686
 L_int = 1.364
@@ -35,8 +37,8 @@ def calc_pressure_force(u,velgrad,dudt,d,Cm):
     press = (1+Cm) * (d/2)**3*4./3*np.pi * (dudt + u_times_deldotu)
     return press
 
-def calc_grav_force(g,d):
-    return g*(d/2)**3*4./3*np.pi * np.array([0,0,1])
+def calc_grav_force(g,d,g_dir):
+    return g*(d/2)**3*4./3*np.pi * g_dir
 
 def calc_drag_force(slip,d,Cd):
     drag = -1 * Cd*0.5*np.pi*(d/2)**2 * (slip.T*np.linalg.norm(slip,axis=-1)).T
@@ -46,7 +48,7 @@ def calc_lift_force(slip,vort,d,Cl):
     lift = -1 * Cl * np.cross(slip,vort) * (d/2)**3*4./3*np.pi
     return lift
 
-def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g):
+def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
     '''
     calculate a bubble's accceleration given its velocity, the local water
     velocity, and the bubble size
@@ -59,7 +61,7 @@ def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g):
     press = calc_pressure_force(u,velgrad,dudt,d,Cm)
     
     # bouyant force
-    grav = calc_grav_force(g,d)
+    grav = calc_grav_force(g,d,g_dir)
     
     # drag force    
     drag = calc_drag_force(slip,d,Cd)
@@ -110,7 +112,7 @@ class PointBubbleSimulation:
         self.n_t = len(self.t)
         
         if fname_save is None:
-            self.fname_save = 'res_beta'+'{:05.4f}'.format(self.beta)+'_A'+'{:05.4f}'.format(self.A)+'_Cm'+'{:03.2f}'.format(self.Cm)+'_Cl'+'{:03.2f}'.format(self.Cl)+'_Cd'+'{:03.2f}'.format(self.Cd)+'_dtFactor'+'{:05.4f}'.format(self.dt_factor)+'.pkl'
+            self.fname_save = 'res_beta'+'{:05.4f}'.format(self.beta)+'_A'+'{:05.4f}'.format(self.A)+'_Cm'+'{:03.2f}'.format(self.Cm)+'_Cl'+'{:03.2f}'.format(self.Cl)+'_Cd'+'{:03.2f}'.format(self.Cd)+'_randomOrientation.pkl'
         else:
             self.fname_save = fname_save
             
@@ -120,7 +122,7 @@ class PointBubbleSimulation:
         
         save_vars = ['beta','A',
                      'Cm','Cl','Cd',
-                     'g','v_q','d',
+                     'g','v_q','d','g_dir',
                      'n_bubs','dt_factor','dt_use','t','n_t',
                      'x','v','u','dudt','velgrad','ti']
         
@@ -137,6 +139,9 @@ class PointBubbleSimulation:
         
         n_t = self.n_t
         n_bubs = self.n_bubs
+        
+        # gravity direction chosen randomly for each bubble
+        self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:] # gravity direction
         
         self.x = np.zeros((n_t,n_bubs,3))
         self.u = np.zeros((n_t,n_bubs,3))
@@ -199,7 +204,7 @@ class PointBubbleSimulation:
             v[0,...] = u[1,...] + np.array([0,0,self.v_q])
         
         # bubble acceleration and new velocity
-        a = a_bubble(u[ti+1,...],v[ti,...],velgrad[ti+1,...],dudt[ti+1,...],self.d,self.Cd,self.Cm,self.Cl,self.g)
+        a = a_bubble(u[ti+1,...],v[ti,...],velgrad[ti+1,...],dudt[ti+1,...],self.d,self.Cd,self.Cm,self.Cl,self.g,self.g_dir)
         v[ti+1,...] = v[ti,...]+a*self.dt_use
         
         # new position
