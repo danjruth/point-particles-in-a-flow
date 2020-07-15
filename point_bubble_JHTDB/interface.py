@@ -22,11 +22,11 @@ def get_velocity(t,x,lJHTDB=lJHTDB):
 def get_velocity_gradient(t,x,lJHTDB=lJHTDB):
     
     # query the data
-    result_grad = lTDB.getData(t, x.copy().astype(np.float32), data_set='isotropic1024coarse',sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
+    result_grad = lJHTDB.getData(t, x.copy().astype(np.float32), data_set='isotropic1024coarse',sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
     
     # put it into the correct shape
-    result_grad_new = np.zeros((len(points),3,3)).astype(np.float32)
-    for i in range(len(points)):
+    result_grad_new = np.zeros((len(x),3,3)).astype(np.float32)
+    for i in range(len(x)):
         this_velgrad = np.array([result_grad[i,0:3],result_grad[i,3:6],result_grad[i,6:]])
         result_grad_new[i,...] = this_velgrad
         

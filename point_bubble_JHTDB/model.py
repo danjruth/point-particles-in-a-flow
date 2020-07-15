@@ -260,26 +260,38 @@ default_params = {'beta':0.5,
                  'Cl':0.5,
                  'n_bubs':500,
                  'dt_factor':0.5,}
-def run_model_default_params(changed_params):
+def run_model_default_params(changed_params,wrap_in_try=True):
     '''
     Specify and run a model which differs from the default parameters by changed_params
     '''
     
     model_is_done = False
     
-    while not model_is_done:
-        
-        try:            
-            params = default_params.copy()
-            for key in list(changed_params.keys()):
-                params[key] = changed_params[key]
-            m = PointBubbleSimulation(params)
-            m.init_sim()
-            m.add_data_if_existing()
-            m.run_model()
-            model_is_done = True
-            
-        except:
-            print('Program failed, starting again')
+    if wrap_in_try:
+    
+        while not model_is_done:
+
+            try:            
+                params = default_params.copy()
+                for key in list(changed_params.keys()):
+                    params[key] = changed_params[key]
+                m = PointBubbleSimulation(params)
+                m.init_sim()
+                m.add_data_if_existing()
+                m.run_model()
+                model_is_done = True
+
+            except:
+                print('Program failed, starting again')
+                
+    else:
+        params = default_params.copy()
+        for key in list(changed_params.keys()):
+            params[key] = changed_params[key]
+        m = PointBubbleSimulation(params)
+        m.init_sim()
+        m.add_data_if_existing()
+        m.run_model()
+        model_is_done = True
 
     
