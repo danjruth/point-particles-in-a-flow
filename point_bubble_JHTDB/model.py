@@ -197,7 +197,7 @@ class PointBubbleSimulation:
         dudt[ti+1,...] = (u_deltat-u[ti+1,...])/delta # future velocity at this point minus current velocity at this point
         
         # liquid velocity gradient
-        velgrad[ti+1,...] = interface.myVelocityGradient(t,x[ti,...])
+        velgrad[ti+1,...] = interface.get_velocity_gradient(t,x[ti,...])
         
         # start the simulation with v = u + v_q
         if ti==0:

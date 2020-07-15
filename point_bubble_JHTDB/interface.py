@@ -19,6 +19,19 @@ def get_velocity(t,x,lJHTDB=lJHTDB):
     #print(x.astype(np.float32))
     return lJHTDB.getData(t, point_coords=x.copy().astype(np.float32), data_set='isotropic1024coarse', getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
 
+def get_velocity_gradient(t,x,lJHTDB=lJHTDB):
+    
+    # query the data
+    result_grad = lTDB.getData(t, x.copy().astype(np.float32), data_set='isotropic1024coarse',sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
+    
+    # put it into the correct shape
+    result_grad_new = np.zeros((len(points),3,3)).astype(np.float32)
+    for i in range(len(points)):
+        this_velgrad = np.array([result_grad[i,0:3],result_grad[i,3:6],result_grad[i,6:]])
+        result_grad_new[i,...] = this_velgrad
+        
+    return result_grad_new
+
 def myVelocityGradient(t,point_coords,delta=1e-4,lJHTDB=lJHTDB):
     '''
     Compute the velocity gradient numerically. Check the effect of delta, it should be around 1e-4.
