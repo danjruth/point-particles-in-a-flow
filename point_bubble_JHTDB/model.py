@@ -164,6 +164,7 @@ class PointBubbleSimulation:
         self.velgrad = res['velgrad']
         self.dudt = res['dudt']
         self.ti = res['ti']-1
+        self.g_dir = res['g_dir']
         
     def add_data_if_existing(self,fname_save=None):
         if fname_save is None:
