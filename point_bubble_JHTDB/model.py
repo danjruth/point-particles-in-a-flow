@@ -234,29 +234,17 @@ class PointBubbleSimulation:
         self.dudt = dudt
         self.velgrad = velgrad
         
-    def run_model(self,save_every=500,n_try_max=10):
+    def run_model(self,save_every=500):
         
         print('running the model')
         
-        while self.ti < self.n_t-1:
+        while self.ti < self.n_t-1:            
             
-            n_tried = 0
-            #while n_tried < n_try_max:
-            if True:
-            
-                #try:
-                if True:
-                    # advance the simulation
-                    t_start = time_pkg.time()
-                    self._advance(self.ti)
-                    print(self.fname_save+' : Timestep '+str(self.ti)+', time '+'{:06.4f}'.format(self.t[self.ti])+', took '+'{:01.4f}'.format(time_pkg.time()-t_start)+' s.')
-                    self.ti = self.ti + 1
-                    
-                else:
-                #except:
-                    n_tried = n_tried+1
-                    print('Pausing execution for 5 s...')
-                    time_pkg.sleep(5)
+            # advance the simulation
+            t_start = time_pkg.time()
+            self._advance(self.ti)
+            print(self.fname_save+' : Timestep '+str(self.ti)+', time '+'{:06.4f}'.format(self.t[self.ti])+', took '+'{:01.4f}'.format(time_pkg.time()-t_start)+' s.')
+            self.ti = self.ti + 1
             
             # save, if necessary
             if (self.ti % save_every) == 0:                
