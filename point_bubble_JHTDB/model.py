@@ -16,6 +16,8 @@ from scipy.spatial.transform import Rotation
 u_rms = 0.686
 L_int = 1.364
 eta = 0.00280
+lam = 0.113
+lam_by_Lint = lam / L_int
 
 dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig
 t_max_turbulence = 10
@@ -77,6 +79,21 @@ def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
 
 def quiescent_speed(d,g,Cd):
     return np.sqrt(8./3*(d/2) * g /Cd)
+
+def A_given_dByL(d_by_L,beta,Cd):
+    '''
+    Calculate A when you want to specify d/L instead of A
+    '''
+    
+    # calculate "physical" parameters
+    d = d_by_L * L_int
+    v_q = beta*u_rms
+    g = 3*Cd*v_q**2/(2*d)
+    
+    # calculate A
+    A = u_rms**2 / (g*L_int)
+    
+    return A
 
 class PointBubbleSimulation:
     
