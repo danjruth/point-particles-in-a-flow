@@ -43,7 +43,7 @@ def calc_grav_force(g,d,g_dir):
     return g*(d/2)**3*4./3*np.pi * g_dir
 
 def calc_drag_force(slip,d,Cd):
-    drag = -1 * Cd*0.5*np.pi*(d/2)**2 * (slip.T*np.linalg.norm(slip,axis=-1)).T
+    drag = -1/8 * Cd * np.pi * d**2 * (slip.T*np.linalg.norm(slip,axis=-1)).T
     return drag
 
 def calc_lift_force(slip,vort,d,Cl):
@@ -78,7 +78,7 @@ def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
     return a
 
 def quiescent_speed(d,g,Cd):
-    return np.sqrt(8./3*(d/2) * g /Cd)
+    return np.sqrt(4./3 * d * g /Cd)
 
 def A_given_dByL(d_by_L,beta,Cd):
     '''
@@ -88,7 +88,7 @@ def A_given_dByL(d_by_L,beta,Cd):
     # calculate "physical" parameters
     d = d_by_L * L_int
     v_q = beta*u_rms
-    g = 3*Cd*v_q**2/(2*d)
+    g = (3./4) * Cd * v_q**2/d
     
     # calculate A
     A = u_rms**2 / (g*L_int)
@@ -109,7 +109,7 @@ class PointBubbleSimulation:
         self.Cd = params['Cd']
         self.g = (u_rms**2/L_int)/self.A
         self.v_q = u_rms/self.beta
-        self.d = self.Cd*self.v_q**2*3./4 / self.g
+        self.d = (3./4) * self.Cd * self.v_q**2 / self.g
                 
         # simulation parameters
         self.n_bubs = params['n_bubs']
@@ -281,6 +281,9 @@ default_params = {'beta':0.5,
 def run_model_default_params(changed_params,wrap_in_try=True):
     '''
     Specify and run a model which differs from the default parameters by changed_params
+    
+    example command to run from a terminal:
+    python3 -c "from point_bubble_JHTDB.model import *; beta=0.5; Cd=0.5; A=A_given_dByL(lam_by_Lint,beta,Cd); run_model_default_params({'Cl':0,'beta':beta,'A':A,Cd:Cd},wrap_in_try=False)"
     '''
     
     model_is_done = False
