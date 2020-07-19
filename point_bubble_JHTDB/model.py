@@ -87,7 +87,7 @@ def A_given_dByL(d_by_L,beta,Cd):
     
     # calculate "physical" parameters
     d = d_by_L * L_int
-    v_q = beta*u_rms
+    v_q = u_rms/beta
     g = (3./4) * Cd * v_q**2/d
     
     # calculate A
