@@ -22,7 +22,8 @@ lam_by_Lint = lam / L_int
 dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig
 t_max_turbulence = 10
 
-data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
+#data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
+data_dir = r'/home/idies/workspace/Temporary/danjruth/scratch//'
 
 def get_vorticity(velgrad):
     vort = np.zeros((len(velgrad),3)) # 
@@ -266,7 +267,7 @@ default_params = {'beta':0.5,
                  'Cl':0.5,
                  'n_bubs':500,
                  'dt_factor':0.5,}
-def run_model_default_params(changed_params,wrap_in_try=True):
+def run_model_default_params(changed_params,wrap_in_try=True,fname_save=None):
     '''
     Specify and run a model which differs from the default parameters by changed_params
     
@@ -297,7 +298,7 @@ def run_model_default_params(changed_params,wrap_in_try=True):
         params = default_params.copy()
         for key in list(changed_params.keys()):
             params[key] = changed_params[key]
-        m = PointBubbleSimulation(params)
+        m = PointBubbleSimulation(params,fname_save=fname_save)
         m.init_sim()
         m.add_data_if_existing()
         m.run_model()
