@@ -15,6 +15,7 @@ from scipy.spatial.transform import Rotation
 
 u_rms = 0.686
 L_int = 1.364
+T_int = L_int/u_rms
 eta = 0.00280
 lam = 0.113
 lam_by_Lint = lam / L_int
