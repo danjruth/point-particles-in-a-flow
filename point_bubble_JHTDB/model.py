@@ -17,10 +17,12 @@ u_rms = 0.686
 L_int = 1.364
 T_int = L_int/u_rms
 eta = 0.00280
+T_eta = 0.0424
 lam = 0.113
 lam_by_Lint = lam / L_int
 
 dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig
+dt_orig = 0.0002
 t_max_turbulence = 10
 
 #data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
