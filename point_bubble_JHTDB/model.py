@@ -140,7 +140,7 @@ class PointBubbleSimulation:
         self.n_t = len(self.t)
         
         if fname_save is None:
-            self.fname_save = 'res_beta'+'{:05.4f}'.format(self.beta)+'_A'+'{:05.4f}'.format(self.A)+'_Cm'+'{:03.2f}'.format(self.Cm)+'_Cl'+'{:03.2f}'.format(self.Cl)+'_Cd'+'{:03.2f}'.format(self.Cd)+'_randomOrientation.pkl'
+            self.fname_save = 'res_beta'+'{:03.2f}'.format(self.beta)+'_A'+'{:04.3f}'.format(self.A)+'_Cm'+'{:03.2f}'.format(self.Cm)+'_Cl'+'{:03.2f}'.format(self.Cl)+'_Cd'+'{:03.2f}'.format(self.Cd)+'_pressureTerm'+'{:04.3f}'.format(self.pressure_term_coef)+'_liftTerm'+'{:04.3f}'.format(self.lift_term_coef)+'.pkl'
         else:
             self.fname_save = fname_save
             
