@@ -25,8 +25,8 @@ dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig
 dt_orig = 0.0002
 t_max_turbulence = 10
 
-#data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
-data_dir = r'/home/idies/workspace/Temporary/danjruth/scratch//'
+data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
+#data_dir = r'/home/idies/workspace/Temporary/danjruth/scratch//'
 
 def get_vorticity(velgrad):
     vort = np.zeros((len(velgrad),3)) # 
@@ -54,7 +54,7 @@ def calc_lift_force(slip,vort,d,Cl):
     lift = -1 * Cl * np.cross(slip,vort) * (d/2)**3*4./3*np.pi
     return lift
 
-def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
+def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir,pressure_term_coef,lift_term_coef):
     '''
     calculate a bubble's accceleration given its velocity, the local water
     velocity, and the bubble size
@@ -64,7 +64,7 @@ def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
     slip = v - u
     
     # pressure force
-    press = calc_pressure_force(u,velgrad,dudt,d,Cm)
+    press = calc_pressure_force(u,velgrad,dudt,d,Cm) * pressure_term_coef
     
     # bouyant force
     grav = calc_grav_force(g,d,g_dir)
@@ -73,7 +73,7 @@ def a_bubble(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
     drag = calc_drag_force(slip,d,Cd)
     
     # lift force
-    lift = calc_lift_force(slip,vort,d,Cl)
+    lift = calc_lift_force(slip,vort,d,Cl) * lift_term_coef
     
     # calculate the added mass and the bubble acceleration
     m_added = Cm*(d/2)**3*4./3*np.pi
@@ -99,6 +99,11 @@ def A_given_dByL(d_by_L,beta,Cd):
     
     return A
 
+def size_coefs(d,eta=eta,L_int=L_int):
+    pressure_term_coef = np.sqrt(1-(d/L_int)**(2./3))
+    lift_term_coef = (d/eta)**(-2./3)
+    return pressure_term_coef,lift_term_coef
+
 class PointBubbleSimulation:
     
     def __init__(self,params,fname_save=None):
@@ -114,6 +119,8 @@ class PointBubbleSimulation:
         self.g = (u_rms**2/L_int)/self.A
         self.v_q = u_rms/self.beta
         self.d = (3./4) * self.Cd * self.v_q**2 / self.g
+        self.pressure_term_coef = params['pressure_term_coef'] # to be multiplied by the pressure force
+        self.lift_term_coef = params['lift_term_coef'] # to be multiplied by the lift force (after accounting for C_L)
                 
         # simulation parameters
         self.n_bubs = params['n_bubs']
@@ -143,6 +150,7 @@ class PointBubbleSimulation:
         
         save_vars = ['beta','A',
                      'Cm','Cl','Cd',
+                     'pressure_term_coef','lift_term_coef',
                      'g','v_q','d','g_dir',
                      'n_bubs','dt_factor','dt_use','t','n_t',
                      'x','v','u','dudt','velgrad','ti']
@@ -226,7 +234,7 @@ class PointBubbleSimulation:
             v[0,...] = u[1,...] + np.array([0,0,self.v_q])
         
         # bubble acceleration and new velocity
-        a = a_bubble(u[ti+1,...],v[ti,...],velgrad[ti+1,...],dudt[ti+1,...],self.d,self.Cd,self.Cm,self.Cl,self.g,self.g_dir)
+        a = a_bubble(u[ti+1,...],v[ti,...],velgrad[ti+1,...],dudt[ti+1,...],self.d,self.Cd,self.Cm,self.Cl,self.g,self.g_dir,self.pressure_term_coef,self.lift_term_coef)
         v[ti+1,...] = v[ti,...]+a*self.dt_use
         
         # new position
@@ -268,43 +276,25 @@ default_params = {'beta':0.5,
                  'Cm':0.5,
                  'Cd':0.5,
                  'Cl':0.5,
+                 'pressure_term_coef':1,
+                 'lift_term_coef':1,
                  'n_bubs':500,
                  'dt_factor':0.5,}
-def run_model_default_params(changed_params,wrap_in_try=True,fname_save=None):
+def run_model_default_params(changed_params,fname_save=None):
     '''
     Specify and run a model which differs from the default parameters by changed_params
     
     example command to run from a terminal:
     python3 -c "from point_bubble_JHTDB.model import *; beta=0.5; Cd=0.5; A=A_given_dByL(lam_by_Lint,beta,Cd); run_model_default_params({'Cl':0,'beta':beta,'A':A,Cd:Cd},wrap_in_try=False)"
     '''
-    
-    model_is_done = False
-    
-    if wrap_in_try:
-    
-        while not model_is_done:
 
-            try:            
-                params = default_params.copy()
-                for key in list(changed_params.keys()):
-                    params[key] = changed_params[key]
-                m = PointBubbleSimulation(params)
-                m.init_sim()
-                m.add_data_if_existing()
-                m.run_model()
-                model_is_done = True
-
-            except:
-                print('Program failed, starting again')
-                
-    else:
-        params = default_params.copy()
-        for key in list(changed_params.keys()):
-            params[key] = changed_params[key]
-        m = PointBubbleSimulation(params,fname_save=fname_save)
-        m.init_sim()
-        m.add_data_if_existing()
-        m.run_model()
-        model_is_done = True
+    params = default_params.copy()
+    for key in list(changed_params.keys()):
+        params[key] = changed_params[key]
+    m = PointBubbleSimulation(params,fname_save=fname_save)
+    m.init_sim()
+    m.add_data_if_existing()
+    m.run_model()
+    model_is_done = True
 
     
