@@ -294,8 +294,8 @@ def run_model_default_params(changed_params,fname_save=None):
     '''
     Specify and run a model which differs from the default parameters by changed_params
     
-    example command to run from a terminal:
-    python3 -c "from point_bubble_JHTDB.model import *; beta=0.5; Cd=0.5; A=A_given_dByL(lam_by_Lint,beta,Cd); run_model_default_params({'Cl':0,'beta':beta,'A':A,Cd:Cd},wrap_in_try=False)"
+    example command to run from a terminal (to run for d=lambda):
+    python3 -c "from point_bubble_JHTDB.model import *; beta=0.5; Cd=0.5; Cl=0.25; A=A_given_dByL(lam_by_Lint,beta,Cd); run_model_default_params({'Cl':Cl,'beta':beta,'A':A,'Cd':Cd})"
     '''
 
     params = default_params.copy()
@@ -305,6 +305,5 @@ def run_model_default_params(changed_params,fname_save=None):
     m.init_sim()
     m.add_data_if_existing()
     m.run_model()
-    model_is_done = True
 
     
