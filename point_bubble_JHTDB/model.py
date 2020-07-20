@@ -119,8 +119,19 @@ class PointBubbleSimulation:
         self.g = (u_rms**2/L_int)/self.A
         self.v_q = u_rms/self.beta
         self.d = (3./4) * self.Cd * self.v_q**2 / self.g
-        self.pressure_term_coef = params['pressure_term_coef'] # to be multiplied by the pressure force
-        self.lift_term_coef = params['lift_term_coef'] # to be multiplied by the lift force (after accounting for C_L)
+        
+        # either set the pressure, lift scalings to 1 or the value based on the size
+        if params['scale_by_d']:
+            self.pressure_term_coef, self.lift_term_coef = size_coefs(self.d)
+        else:
+            self.pressure_term_coef = 1 # to be multiplied by the pressure force
+            self.lift_term_coef = 1 # to be multiplied by the lift force (after accounting for C_L)
+            
+        # replace the pressure, lift scalings with specified values if they were given
+        if 'pressure_term_coef' in params:
+            self.pressure_term_coef = params['pressure_term_coef']
+        if 'lift_term_coef' in params:
+            self.lift_term_coef = params['lift_term_coef']            
                 
         # simulation parameters
         self.n_bubs = params['n_bubs']
@@ -276,8 +287,7 @@ default_params = {'beta':0.5,
                  'Cm':0.5,
                  'Cd':0.5,
                  'Cl':0.5,
-                 'pressure_term_coef':1,
-                 'lift_term_coef':1,
+                 'scale_by_d':False, # whether the pressure, lift terms should be scaled according to the d value chosen
                  'n_bubs':500,
                  'dt_factor':0.5,}
 def run_model_default_params(changed_params,fname_save=None):
