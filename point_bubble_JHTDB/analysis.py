@@ -68,6 +68,33 @@ def load_case(d,calc_forces=False):
     else:
         res = d
         
+    # calculate the forces, in DNS coords initially
+    slip = res['v'] - res['u']
+    vort = get_vorticity(res['velgrad'])
+    vol = (res['d']/2.)**3 * 4./3 * np.pi
+    
+    grav_z = res['g'] * vol
+    norm = grav_z
+    
+    press = []
+    drag = []
+    lift = []
+    for i in [0,1,2]:
+        
+        u_times_deldotu = np.sum(res['velgrad'][...,i,:]*res['u'],axis=-1)
+        press.append((1+res['Cm'])* vol * (res['dudt'][:,:,i] + u_times_deldotu[:,...]))        
+        drag.append(-1*res['Cd'] * 0.5 * np.pi * (res['d']/2)**2 * slip[:,...,i] * np.linalg.norm(slip[:,...],axis=-1))        
+        lift.append(-1 * res['Cl'] * np.cross(slip,vort)[:,...,i] * vol)
+        
+    # make each arrays, and rotate
+    press = np.moveaxis(np.array(press),0,-1)
+    drag = np.moveaxis(np.array(drag),0,-1)
+    lift = np.moveaxis(np.array(lift),0,-1)
+    res['press'] = rot_all(press,res['g_dir'])
+    res['drag'] = rot_all(drag,res['g_dir'])
+    res['lift'] = rot_all(lift,res['g_dir'])
+    res['grav_z'] = grav_z
+        
     # rotate the velocities and position
     res['v'] = rot_all(res['v'],res['g_dir'])
     res['u'] = rot_all(res['u'],res['g_dir'])
@@ -82,6 +109,8 @@ def load_case(d,calc_forces=False):
     
     # see which points to consider (after initial transient)
     res['cond'] = res['t']>model.T_int*2
+    mean_rise = np.mean(res['v'][:,:,2],axis=1)
+    res['cond'] = res['cond'] * (mean_rise>0)
     
     return res
     
