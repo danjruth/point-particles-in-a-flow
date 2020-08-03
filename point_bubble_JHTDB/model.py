@@ -25,8 +25,8 @@ dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig
 dt_orig = 0.0002
 t_max_turbulence = 10
 
-data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
-#data_dir = r'/home/idies/workspace/Temporary/danjruth/scratch//'
+#data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
+data_dir = r'/home/idies/workspace/Temporary/danjruth/scratch//'
 
 def get_vorticity(velgrad):
     vort = np.zeros((len(velgrad),3)) # 
@@ -306,4 +306,17 @@ def run_model_default_params(changed_params,fname_save=None):
     m.add_data_if_existing()
     m.run_model()
 
+def run_for_matching_A(beta,d_by_L,A,Cl):
     
+    '''
+    python3 -c "from point_bubble_JHTDB.model import *; run_for_matching_A(beta,d_by_L,A,Cl)"
+    '''
+    
+    d = d_by_L * L_int
+    
+    g = u_rms**2 / (L_int*A)
+    
+    v_q = u_rms / beta
+    Cd = 4./3 * d * g / v_q**2
+    
+    run_model_default_params({'beta':beta,'A':A,'Cd':Cd,'Cl':Cl},fname_save=None)
