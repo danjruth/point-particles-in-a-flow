@@ -111,7 +111,7 @@ def load_case(d,calc_forces=False):
     res['cond'] = res['cond'] * (mean_rise>0)
     
     # get rid of the final point in time, so everything has the same length (slip already is the right length)
-    for var in ['v','u','x','t',]:
+    for var in ['v','u','x','t','cond']:
         res[var] = res[var][:-1]
     
     return res
