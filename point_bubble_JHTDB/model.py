@@ -335,6 +335,9 @@ class LagrangianTrajectories:
         self.dt_factor = dt_factor
         self.dt_use = self.dt_factor*dt
         
+        self.t = np.arange(0,t_max_turbulence,self.dt_use)
+        self.n_t = len(self.t)
+        
     def init_sim(self):
         '''
         Initialize the simulation
@@ -352,8 +355,6 @@ class LagrangianTrajectories:
         self.x[0,...] = np.random.uniform(low=0,high=2*np.pi,size=(n_traj,3))
                 
         self.ti = 0
-        self.t = np.arange(0,t_max_turbulence,self.dt_use)
-        self.n_t = len(self.t)
         
     def add_data_if_existing(self,fname_save=None):
         if fname_save is None:
