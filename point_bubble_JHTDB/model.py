@@ -356,6 +356,16 @@ class LagrangianTrajectories:
                 
         self.ti = 0
         
+    def add_data(self,res):
+        '''
+        Add partially-complete simulation data stored in the dict res
+        '''
+        
+        self.x = res['x']
+        self.u = res['u']
+        self.ti = res['ti']-1
+        self.g_dir = res['g_dir']
+        
     def add_data_if_existing(self,fname_save=None):
         if fname_save is None:
             fname_save = self.fname_save
@@ -418,7 +428,7 @@ class LagrangianTrajectories:
         
 def get_lagrangian_trajectories():
     
-    m  = LagrangianTrajectories('lagrangian_trajecotires_dtFactor0.5',n_traj=500,dt_factor=0.5)
+    m  = LagrangianTrajectories('lagrangian_trajectories_dtFactor0.5',n_traj=500,dt_factor=0.5)
     m.init_sim()
     m.add_data_if_existing()
     m.run_model()
