@@ -192,6 +192,8 @@ class PointBubbleSimulation:
         self.x[0,...] = np.random.uniform(low=0,high=2*np.pi,size=(n_bubs,3))
                 
         self.ti = 0
+        self.t = np.arange(0,t_max_turbulence,self.dt_use)
+        self.n_t = len(self.t)
         
     def add_data(self,res):
         '''
@@ -254,6 +256,7 @@ class PointBubbleSimulation:
         # store the data
         self.u = u
         self.v = v
+        self.x = x
         self.dudt = dudt
         self.velgrad = velgrad
         
@@ -274,6 +277,8 @@ class PointBubbleSimulation:
                 self.save()
                 
         self.save()
+        
+
                 
 def load_sim_from_file(fpath):
     with open(fpath, 'rb') as handle:
@@ -320,3 +325,99 @@ def run_for_matching_A(beta,d_by_L,A,Cl):
     Cd = 4./3 * d * g / v_q**2
     
     run_model_default_params({'beta':beta,'A':A,'Cd':Cd,'Cl':Cl},fname_save=None)
+    
+    
+class LagrangianTrajectories:
+    
+    def __init__(self,fname_save,n_traj=500,dt_factor=0.5):
+        self.fname_save = fname_save
+        self.n_traj = n_traj
+        self.dt_factor = dt_factor
+        self.dt_use = self.dt_factor*dt
+        
+    def init_sim(self):
+        '''
+        Initialize the simulation
+        '''
+        
+        n_t = self.n_t
+        n_traj = self.n_traj
+        
+        # gravity direction chosen randomly for each trajectory
+        self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_traj)])[:,0,:] # gravity direction
+        
+        self.x = np.zeros((n_t,n_traj,3))
+        self.u = np.zeros((n_t,n_traj,3))
+        
+        self.x[0,...] = np.random.uniform(low=0,high=2*np.pi,size=(n_traj,3))
+                
+        self.ti = 0
+        self.t = np.arange(0,t_max_turbulence,self.dt_use)
+        self.n_t = len(self.t)
+        
+    def add_data_if_existing(self,fname_save=None):
+        if fname_save is None:
+            fname_save = self.fname_save
+            
+        if os.path.isfile(data_dir+fname_save):
+            print('Loading data from '+data_dir+fname_save)
+            with open(data_dir+fname_save, 'rb') as handle:
+                res = pickle.load(handle)
+            self.add_data(res)
+        else:
+            print('Did not find file '+str(data_dir+fname_save))
+            
+    def save(self,fname_save=None):
+        if fname_save is None:
+            fname_save = self.fname_save
+        
+        save_vars = ['n_traj','dt_factor','dt_use','t','n_t','g_dir',
+                     'x','u','ti']
+        
+        res = {attr:getattr(self,attr) for attr in save_vars}
+        print('Saving data to '+fname_save)
+        with open(data_dir+fname_save, 'wb') as handle:
+            pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
+    def _advance(self,ti):
+        
+        t = self.t[ti]
+        u = self.u
+        x = self.x
+        
+        # liquid velocity
+        u[ti+1,...] = interface.get_velocity(t,x[ti,...])
+        if ti==0:
+            u[0,...] = u[1,...]
+        
+        # new position
+        x[ti+1,...] = x[ti,...]+u[ti+1,...]*self.dt_use
+        
+        # store the data
+        self.u = u
+        self.x = x
+        
+    def run_model(self,save_every=500):
+        
+        print('running the model')
+        
+        while self.ti < self.n_t-1:            
+            
+            # advance the simulation
+            t_start = time_pkg.time()
+            self._advance(self.ti)
+            print(self.fname_save+' : Timestep '+str(self.ti)+', time '+'{:06.4f}'.format(self.t[self.ti])+', took '+'{:01.4f}'.format(time_pkg.time()-t_start)+' s.')
+            self.ti = self.ti + 1
+            
+            # save, if necessary
+            if (self.ti % save_every) == 0:                
+                self.save()
+                
+        self.save()
+        
+def get_lagrangian_trajectories():
+    
+    m  = LagrangianTrajectories('lagrangian_trajecotires_dtFactor0.5',n_traj=500,dt_factor=0.5)
+    m.init_sim()
+    m.add_data_if_existing()
+    m.run_model()
