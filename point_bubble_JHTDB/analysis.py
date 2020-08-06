@@ -60,7 +60,7 @@ def rot_all(arrs,g_dirs):
     arrs_new = np.moveaxis(np.array(arrs_new),0,1)
     return arrs_new
 
-def load_case(d,calc_forces=False):
+def load_case(d,calc_forces=False,n_T_int=2):
     
     if isinstance(d,str):
         with open(d, 'rb') as handle:
@@ -106,7 +106,7 @@ def load_case(d,calc_forces=False):
     del res['velgrad']
     
     # see which points to consider (after initial transient)
-    res['cond'] = res['t']>model.T_int*2
+    res['cond'] = res['t']>model.T_int*n_T_int
     mean_rise = np.mean(res['v'][:,:,2],axis=1)
     res['cond'] = res['cond'] * (mean_rise>0)
     
