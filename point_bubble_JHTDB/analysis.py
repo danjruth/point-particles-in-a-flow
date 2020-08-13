@@ -68,6 +68,8 @@ def load_case(d,calc_forces=False,n_T_int=2):
     else:
         res = d
         
+    res['Fr'] = model.u_rms / np.sqrt(res['g']*model.L_int)
+        
     # calculate the forces, in DNS coords initially
     slip = res['v'][:-1] - res['u'][1:]
     vort = get_vorticity(res['velgrad'])
@@ -101,6 +103,7 @@ def load_case(d,calc_forces=False,n_T_int=2):
     res['x'] = rot_all(res['x'],res['g_dir'])
     res['slip'] = rot_all(slip,res['g_dir'])
     res['vort'] = rot_all(vort,res['g_dir'])
+    res['dudt'] = rot_all(res['dudt'],res['g_dir'])
     
     # drop the velgrad since it hasn't been rotated
     del res['velgrad']
@@ -111,7 +114,7 @@ def load_case(d,calc_forces=False,n_T_int=2):
     res['cond'] = res['cond'] * (mean_rise>0)
     
     # get rid of the final point in time, so everything has the same length (slip already is the right length)
-    for var in ['v','u','x','t','cond']:
+    for var in ['v','u','x','vort','t','cond']:
         res[var] = res[var][:-1]
     
     return res
@@ -130,3 +133,17 @@ def get_vorticity(velgrad):
     vort[...,1] = velgrad[...,0,2] - velgrad[...,2,0]
     vort[...,2] = velgrad[...,1,0] - velgrad[...,0,1]
     return vort
+
+def get_minmax_series(df,varx,vary):
+
+    x = df[varx].unique()
+        
+    low = np.zeros_like(x)
+    high = np.zeros_like(x)
+    
+    for bi,b in enumerate(x):
+        low[bi] = df[df[varx]==b][vary].min()
+        high[bi] = df[df[varx]==b][vary].max()
+        
+    return x,low,high
+    
