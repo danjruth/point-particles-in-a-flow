@@ -244,7 +244,7 @@ class PointBubbleSimulation:
         
         # start the simulation with v = u + v_q
         if ti==0:
-            v[0,...] = u[1,...] + np.array([0,0,self.v_q])
+            v[0,...] = u[1,...]*0 + self.g_dir * self.v_q
         
         # bubble acceleration and new velocity
         a = a_bubble(u[ti+1,...],v[ti,...],velgrad[ti+1,...],dudt[ti+1,...],self.d,self.Cd,self.Cm,self.Cl,self.g,self.g_dir,self.pressure_term_coef,self.lift_term_coef)
