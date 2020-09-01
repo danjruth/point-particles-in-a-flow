@@ -151,7 +151,7 @@ class PointBubbleSimulation:
         self.n_t = len(self.t)
         
         if fname_save is None:
-            self.fname_save = 'res_beta'+'{:03.2f}'.format(self.beta)+'_A'+'{:04.3f}'.format(self.A)+'_Cm'+'{:03.2f}'.format(self.Cm)+'_Cl'+'{:03.2f}'.format(self.Cl)+'_Cd'+'{:03.2f}'.format(self.Cd)+'_pressureTerm'+'{:04.3f}'.format(self.pressure_term_coef)+'_liftTerm'+'{:04.3f}'.format(self.lift_term_coef)+'.pkl'
+            self.fname_save = 'res_beta'+'{:03.2f}'.format(self.beta)+'_A'+'{:06.5f}'.format(self.A)+'_Cm'+'{:03.2f}'.format(self.Cm)+'_Cl'+'{:03.2f}'.format(self.Cl)+'_Cd'+'{:03.2f}'.format(self.Cd)+'_pressureTerm'+'{:04.3f}'.format(self.pressure_term_coef)+'_liftTerm'+'{:04.3f}'.format(self.lift_term_coef)+'.pkl'
         else:
             self.fname_save = fname_save
             
@@ -301,6 +301,7 @@ def run_model_default_params(changed_params,fname_save=None):
     
     example command to run from a terminal (to run for d=lambda):
     python3 -c "from point_bubble_JHTDB.model import *; beta=0.5; Cd=0.5; Cl=0.25; A=A_given_dByL(lam_by_Lint,beta,Cd); run_model_default_params({'Cl':Cl,'beta':beta,'A':A,'Cd':Cd})"
+    python3 -c "from point_bubble_JHTDB.model import *; beta=0.25; Cd=1; Cl=0.0; A=A_given_dByL(0.12,beta,Cd); run_model_default_params({'Cl':Cl,'beta':beta,'A':A,'Cd':Cd})"
     '''
 
     params = default_params.copy()
