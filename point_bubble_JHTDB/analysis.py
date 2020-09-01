@@ -60,7 +60,7 @@ def rot_all(arrs,g_dirs):
     arrs_new = np.moveaxis(np.array(arrs_new),0,1)
     return arrs_new
 
-def load_case(d,calc_forces=False,n_T_int=2):
+def load_case(d,n_T_int=2):
     
     if isinstance(d,str):
         with open(d, 'rb') as handle:
@@ -118,8 +118,29 @@ def load_case(d,calc_forces=False,n_T_int=2):
         res[var] = res[var][:-1]
     
     return res
+
+def concat_cases(list_of_dicts, fpath_save=None):
     
-    #if calc_forces:
+    # start with making a copy of the first dict
+    res = list_of_dicts[0].copy()
+    
+    # sum the total number of bubbles
+    res['n_bubs'] = np.sum([d['n_bubs'] for d in list_of_dicts])
+    
+    # no time axis for g_dir, so concat along the 0th axis
+    res['g_dir'] = np.concatenate([d['g_dir'] for d in list_of_dicts],axis=0)
+    
+    # bubble axis is 1 for the rest of the variables to concatenate
+    keys_to_concat = ['x','v','u','dudt','velgrad']
+    for key in keys_to_concat:
+        res[key] = np.concatenate([d[key] for d in list_of_dicts],axis=1)
+        
+    if fpath_save is not None:
+        print('Saving data to '+fpath_save)
+        with open(fpath_save, 'wb') as handle:
+            pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
+    return res
         
 # '''
 # Functions like those in model.py

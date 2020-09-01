@@ -273,7 +273,7 @@ class PointBubbleSimulation:
             self.ti = self.ti + 1
             
             # save, if necessary
-            if (self.ti % save_every) == 0:                
+            if (self.ti % save_every) == 0:
                 self.save()
                 
         self.save()
