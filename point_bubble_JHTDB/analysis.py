@@ -47,6 +47,10 @@ def rot_coord_system(arr,g_dir):
 
     return arr_rot
 
+# def unrot_coord_system(arr_rot,g_dir_orig):
+    
+    
+
 def rot_all(arrs,g_dirs):    
     '''
     rotate the coordinate systems for all n_b bubbles (along axis 1). 

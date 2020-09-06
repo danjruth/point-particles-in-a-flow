@@ -181,7 +181,8 @@ class PointBubbleSimulation:
         n_bubs = self.n_bubs
         
         # gravity direction chosen randomly for each bubble
-        self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:] # gravity direction
+        #self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:] # gravity direction
+        self.g_dir = np.array([np.array([0,0,1]) for _ in range(n_bubs)])#[:,0,:] # gravity direction
         
         self.x = np.zeros((n_t,n_bubs,3))
         self.u = np.zeros((n_t,n_bubs,3))
