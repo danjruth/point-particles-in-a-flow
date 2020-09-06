@@ -47,20 +47,23 @@ def rot_coord_system(arr,g_dir):
 
     return arr_rot
 
-def rot_all(arrs,g_dirs):    
+def rot_all(arrs,g_dirs,actually_rot=True):    
     '''
     rotate the coordinate systems for all n_b bubbles (along axis 1). 
     
     arrs has shape (n_t,n_b,3); g_dirs has shape (n_b,3)
     '''
+    
+    if actually_rot:
+        arrs_new = []
+        for i in np.arange(len(g_dirs)):
+            arrs_new.append(rot_coord_system(arrs[:,i,:],g_dirs[i,:]))        
+        arrs_new = np.moveaxis(np.array(arrs_new),0,1)
+        return arrs_new
+    else:
+        return arrs
 
-    arrs_new = []
-    for i in np.arange(len(g_dirs)):
-        arrs_new.append(rot_coord_system(arrs[:,i,:],g_dirs[i,:]))        
-    arrs_new = np.moveaxis(np.array(arrs_new),0,1)
-    return arrs_new
-
-def load_case(d,n_T_int=2):
+def load_case(d,n_T_int=2,rot=True):
     
     if isinstance(d,str):
         with open(d, 'rb') as handle:
@@ -92,18 +95,18 @@ def load_case(d,n_T_int=2):
     press = np.moveaxis(np.array(press),0,-1)
     drag = np.moveaxis(np.array(drag),0,-1)
     lift = np.moveaxis(np.array(lift),0,-1)
-    res['press'] = rot_all(press,res['g_dir'])
-    res['drag'] = rot_all(drag,res['g_dir'])
-    res['lift'] = rot_all(lift,res['g_dir'])
+    res['press'] = rot_all(press,res['g_dir'],actually_rot=rot)
+    res['drag'] = rot_all(drag,res['g_dir'],actually_rot=rot)
+    res['lift'] = rot_all(lift,res['g_dir'],actually_rot=rot)
     res['grav_z'] = grav_z
         
     # rotate the velocities and position
-    res['v'] = rot_all(res['v'],res['g_dir'])
-    res['u'] = rot_all(res['u'],res['g_dir'])
-    res['x'] = rot_all(res['x'],res['g_dir'])
-    res['slip'] = rot_all(slip,res['g_dir'])
-    res['vort'] = rot_all(vort,res['g_dir'])
-    res['dudt'] = rot_all(res['dudt'],res['g_dir'])
+    res['v'] = rot_all(res['v'],res['g_dir'],actually_rot=rot)
+    res['u'] = rot_all(res['u'],res['g_dir'],actually_rot=rot)
+    res['x'] = rot_all(res['x'],res['g_dir'],actually_rot=rot)
+    res['slip'] = rot_all(slip,res['g_dir'],actually_rot=rot)
+    res['vort'] = rot_all(vort,res['g_dir'],actually_rot=rot)
+    res['dudt'] = rot_all(res['dudt'],res['g_dir'],actually_rot=rot)
     
     # drop the velgrad since it hasn't been rotated
     del res['velgrad']
