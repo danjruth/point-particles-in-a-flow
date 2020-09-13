@@ -8,6 +8,7 @@ Created on Sun Jul 19 11:55:39 2020
 import numpy as np
 import pickle
 from point_bubble_JHTDB import model
+import pandas as pd
 
 def get_hist(y,bins=1001):
     '''return a normalized pdf and x locs of bin centers'''
@@ -145,11 +146,9 @@ def concat_cases(list_of_dicts, fpath_save=None):
         
     return res
         
-# '''
-# Functions like those in model.py
-# '''
-    
+
 def get_vorticity(velgrad):
+    # similar to the function in model.py
     velgrad_shape = np.shape(velgrad)
     vort_shape = velgrad_shape[:-1]
     vort = np.zeros(vort_shape)
@@ -157,6 +156,16 @@ def get_vorticity(velgrad):
     vort[...,1] = velgrad[...,0,2] - velgrad[...,2,0]
     vort[...,2] = velgrad[...,1,0] - velgrad[...,0,1]
     return vort
+
+def get_curvature(vel,t):
+    accel = (np.gradient(vel,axis=0).T/np.gradient(t)).T
+    curvature = np.linalg.norm(np.cross(vel,accel),axis=-1) / np.linalg.norm(vel,axis=-1)**3
+    return curvature
+
+def get_powerlaw(x,y,roll_window=1):
+    powerlaw = np.gradient(np.log(y))/np.gradient(np.log(x))
+    powerlaw = pd.Series(data=powerlaw).rolling(center=True,window=roll_window,min_periods=0).mean()
+    return powerlaw
 
 def get_minmax_series(df,varx,vary):
 
