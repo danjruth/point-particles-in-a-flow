@@ -181,8 +181,8 @@ class PointBubbleSimulation:
         n_bubs = self.n_bubs
         
         # gravity direction chosen randomly for each bubble
-        #self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:] # gravity direction
-        self.g_dir = np.array([np.array([0,0,1]) for _ in range(n_bubs)])#[:,0,:] # gravity direction
+        self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:] # gravity direction
+        #self.g_dir = np.array([np.array([0,0,1]) for _ in range(n_bubs)])#[:,0,:] # gravity direction
         
         self.x = np.zeros((n_t,n_bubs,3))
         self.u = np.zeros((n_t,n_bubs,3))
@@ -303,6 +303,7 @@ def run_model_default_params(changed_params,fname_save=None):
     example command to run from a terminal (to run for d=lambda):
     python3 -c "from point_bubble_JHTDB.model import *; beta=0.5; Cd=0.5; Cl=0.25; A=A_given_dByL(lam_by_Lint,beta,Cd); run_model_default_params({'Cl':Cl,'beta':beta,'A':A,'Cd':Cd})"
     python3 -c "from point_bubble_JHTDB.model import *; beta=0.25; Cd=1; Cl=0.0; A=A_given_dByL(0.12,beta,Cd); run_model_default_params({'Cl':Cl,'beta':beta,'A':A,'Cd':Cd})"
+    python3 -c "from point_bubble_JHTDB.model import *; beta=0.25; Cd=1; Cl=0.0; A=A_given_dByL(0.2,beta,Cd); run_model_default_params({'Cl':Cl,'beta':beta,'A':A,'Cd':Cd,'n_bubs':500,'dt_factor':0.5})"
     '''
 
     params = default_params.copy()
