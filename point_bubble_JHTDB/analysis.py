@@ -64,7 +64,7 @@ def rot_all(arrs,g_dirs,actually_rot=True):
     else:
         return arrs
 
-def load_case(d,n_T_int=2,rot=True):
+def load_case(d,n_T_int=2,rot=True,only_nonzero_mean_rise=False):
     
     if isinstance(d,str):
         with open(d, 'rb') as handle:
@@ -79,15 +79,17 @@ def load_case(d,n_T_int=2,rot=True):
     vort = get_vorticity(res['velgrad'])
     vol = (res['d']/2.)**3 * 4./3 * np.pi
     
+    # gravity force
     grav_z = res['g'] * vol
-    norm = grav_z
     
     press = []
     drag = []
     lift = []
+    u_times_deldotu_all = []
     for i in [0,1,2]:
         
         u_times_deldotu = np.sum(res['velgrad'][1:,:,i,:]*res['u'][1:],axis=-1)
+        u_times_deldotu_all.append(u_times_deldotu)
         press.append((1+res['Cm'])* vol * (res['dudt'][1:,:,i] + u_times_deldotu))        
         drag.append(-1*res['Cd'] * 0.5 * np.pi * (res['d']/2)**2 * slip[...,i] * np.linalg.norm(slip[:,...],axis=-1))        
         lift.append(-1 * res['Cl'] * np.cross(slip,vort[1:])[...,i] * vol)
@@ -107,15 +109,18 @@ def load_case(d,n_T_int=2,rot=True):
     res['x'] = rot_all(res['x'],res['g_dir'],actually_rot=rot)
     res['slip'] = rot_all(slip,res['g_dir'],actually_rot=rot)
     res['vort'] = rot_all(vort,res['g_dir'],actually_rot=rot)
-    res['dudt'] = rot_all(res['dudt'],res['g_dir'],actually_rot=rot)
+    res['dudt'] = rot_all(res['dudt'][1:],res['g_dir'],actually_rot=rot)
+    u_times_deldotu = np.moveaxis(np.array(u_times_deldotu_all),0,-1)
+    res['u_times_deldotu'] = rot_all(u_times_deldotu,res['g_dir'],actually_rot=rot)
     
     # drop the velgrad since it hasn't been rotated
     del res['velgrad']
     
     # see which points to consider (after initial transient)
     res['cond'] = res['t']>model.T_int*n_T_int
-    mean_rise = np.mean(res['v'][:,:,2],axis=1)
-    res['cond'] = res['cond'] * (mean_rise>0)
+    if only_nonzero_mean_rise:
+        mean_rise = np.mean(res['v'][:,:,2],axis=1)
+        res['cond'] = res['cond'] * (mean_rise!=0)
     
     # get rid of the final point in time, so everything has the same length (slip already is the right length)
     for var in ['v','u','x','vort','t','cond']:
