@@ -16,6 +16,7 @@ except ImportError:
     print('Unable to import pyJHTDB and initialize')
     lJHTDB_available = False
 
+dx = 2*np.pi / 1024.
 
 if lJHTDB_available:
 
@@ -24,10 +25,41 @@ if lJHTDB_available:
         #print(x.astype(np.float32))
         return lJHTDB.getData(t, point_coords=x.copy().astype(np.float32), data_set='isotropic1024coarse', getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
     
+    def get_velocity_filtered(t,x,filter_width,lJHTDB=lJHTDB):
+        #print(x.astype(np.float32))
+        return lJHTDB.getBoxFilter(t, point_coords=x.copy().astype(np.float32), data_set='isotropic1024coarse', field='velocity', filter_width=filter_width)
+    
+#     def test_velocity_filtered():
+#         x = np.array([2,3.2,1.9])
+#         t = 4.2
+#         print('a')
+#         a = get_velocity_filtered(t,x.copy(),0.1)
+#         print(a)
+#         a = get_velocity_filtered(t,x.copy(),0.01)
+#         print(a)
+#         a = get_velocity(t,x.copy())
+#         print(a)
+#         return None
+    
     def get_velocity_gradient(t,x,lJHTDB=lJHTDB):
         
         # query the data
         result_grad = lJHTDB.getData(t, x.copy().astype(np.float32), data_set='isotropic1024coarse',sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
+        #print(np.shape(result_grad))
+        
+        # put it into the correct shape
+        result_grad_new = np.zeros((len(x),3,3)).astype(np.float32)
+        for i in range(len(x)):
+            this_velgrad = np.array([result_grad[i,0:3],result_grad[i,3:6],result_grad[i,6:]])
+            result_grad_new[i,...] = this_velgrad
+            
+        return result_grad_new
+    
+    def get_velocity_gradient_filtered(t,x,filter_width):
+        
+        # query the data
+        result_grad = lJHTDB.getBoxFilterGradient(t, x.copy().astype(np.float32), data_set='isotropic1024coarse', filter_width=filter_width, field='velocity',)
+        print(np.shape(result_grad))
         
         # put it into the correct shape
         result_grad_new = np.zeros((len(x),3,3)).astype(np.float32)
@@ -69,3 +101,54 @@ if lJHTDB_available:
                 vel_grad[j,i,2] = (u[j,5,i]-u[j,4,i])/(2*delta)
                 
         return vel_grad
+    
+    def get_sphere_kernel(r,n_per_r):
+        x = np.linspace(-r,r,n_per_r*2+1)
+        y = np.linspace(-r,r,n_per_r*2+1)
+        z = np.linspace(-r,r,n_per_r*2+1)
+
+        X,Y,Z = np.meshgrid(x,y,z)
+        XYZ = np.moveaxis(np.array([X,Y,Z]),0,-1)
+        XYZ_flat = np.reshape(XYZ,(np.shape(XYZ)[0]**3,3))
+
+        dist = np.linalg.norm(XYZ_flat,axis=1)
+        XYZ_use = XYZ_flat[dist<=r]
+        return XYZ_use
+    
+    def get_points_in_sphere(center,sphere_kernel):
+        points = np.array([center[i]+sphere_kernel for i in range(len(center))])
+        return points
+    
+    def get_velocity_volavg(t,x,sphere_kernel,lJHTDB=lJHTDB):
+        points = get_points_in_sphere(x,sphere_kernel)
+        #print(np.shape(points))
+        vels = get_velocity(t,points,lJHTDB=lJHTDB) # [bubble,point_in_sphere,axis]
+        #print(np.shape(vels))
+        return np.mean(vels,axis=1)
+    
+    def get_velocity_gradient_volavg(t,x,sphere_kernel,lJHTDB=lJHTDB):
+        points = get_points_in_sphere(x,sphere_kernel)
+        #print('shape of points:')
+        #print(np.shape(points))
+        velgrads = np.array([get_velocity_gradient(t,points[i],lJHTDB=lJHTDB) for i in np.arange(len(x))]) # [bubble,point_in_sphere,axis]
+        #print('shape of velgrads:')
+        #print(np.shape(velgrads))
+        return np.mean(velgrads,axis=1) 
+    
+    def surface_average_of_velocity(t,x,d,filter_size,d2_factor=1.01,avg1=None,lJHTDB=lJHTDB):
+        
+        r = d/2
+        r1 = r
+        r2 = r1*d2_factor
+        #r2 = r1 + dx*2
+        
+        if avg1 is None:
+            avg1 = get_velocity_filtered(t,x,filter_size,lJHTDB=lJHTDB)
+        avg2 = get_velocity_filtered(t,x,filter_size*d2_factor,lJHTDB=lJHTDB)
+        
+        larger = r2**3 * avg2
+        smaller = r1**3 * avg1
+        deriv = (larger-smaller)/(r2-r1)
+        surface_avg = 1./(3*r1**2) * deriv
+        
+        return surface_avg
