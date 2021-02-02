@@ -75,7 +75,8 @@ def quiescent_speed(d,g,Cd):
 
 class VelocityField:
     
-    def __init__(self):
+    def __init__(self,name='none'):
+        self.name = name
         pass
     
     def get_velocity(self,t,x):
@@ -108,7 +109,8 @@ class EquationOfMotion:
     '''the __call__ method returns the new particle velocities, given their
     old velocities, the field state at their locations, the bubble parameters,
     and teh timestep'''
-    def __init__(self):
+    def __init__(self,name='none'):
+        self.name = name
         pass
     
 class MREqn(EquationOfMotion):
@@ -211,6 +213,29 @@ class Simulation:
         self.x[ti+1,...] = x_new
         self.dudt[ti+1,...] = fs.dudt
         self.velgrad[ti+1,...] = fs.velgrad
+        
+    def save(self,fpath_save=None):
+        '''Save the bubble parameters, simulation parameters, and results of 
+        the simulation as a dict. Save just the names of the velocity field
+        and the equation of motion (since these classes can't be pickled
+        reliably)
+        '''
+        
+        if fpath_save is None:
+            fpath_save = None
+        
+        save_vars = ['bubble_params','sim_params',
+                     'g_dir',
+                     'x','v','u','dudt','velgrad',
+                     'ti']        
+        res = {attr:getattr(self,attr) for attr in save_vars}
+        res['velocity_field_name'] = self.velocity_field.name
+        res['equation_of_motion_name'] = self.eom.name
+        return res
+        
+        #print('Saving data to '+fpath_save)
+        #with open(fpath_save, 'wb') as handle:
+        #    pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
 
 class PointBubbleSimulation:
