@@ -41,24 +41,19 @@ def calc_lift_force(slip,vort,d,Cl):
     lift = -1 * Cl * np.cross(slip,vort) * (d/2)**3*4./3*np.pi
     return lift
 
-def a_bubble_MR(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir,pressure_term_coef,lift_term_coef,u_drag=None):
+def a_bubble_MR(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
     '''
     calculate a bubble's accceleration given its velocity, the local water
     velocity, and the bubble size
     '''
     
-    if u_drag is None:
-        u_drag = u
     
     vort = get_vorticity(velgrad)
     slip = v - u
-    if u_drag is not None:
-        slip_drag = v - u_drag
-    else:
-        slip_drag = slip
+    slip_drag = slip
     
     # pressure force
-    press = calc_pressure_force(u,velgrad,dudt,d,Cm) * pressure_term_coef
+    press = calc_pressure_force(u,velgrad,dudt,d,Cm)
     
     # bouyant force
     grav = calc_grav_force(g,d,g_dir)
@@ -67,7 +62,7 @@ def a_bubble_MR(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir,pressure_term_coef,lift_term
     drag = calc_drag_force(slip_drag,d,Cd)
     
     # lift force
-    lift = calc_lift_force(slip,vort,d,Cl) * lift_term_coef
+    lift = calc_lift_force(slip,vort,d,Cl)
     
     # calculate the added mass and the bubble acceleration
     m_added = Cm*(d/2)**3*4./3*np.pi
@@ -77,8 +72,6 @@ def a_bubble_MR(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir,pressure_term_coef,lift_term
 
 def quiescent_speed(d,g,Cd):
     return np.sqrt(4./3 * d * g /Cd)
-
-
 
 class VelocityField:
     
@@ -100,6 +93,8 @@ class VelocityField:
         return FieldState(self,t,x)
 
 class FieldState:
+    '''velocity values at a given time and locations
+    '''
     
     def __init__(self,velocity_field,t,x):
         
@@ -123,7 +118,7 @@ class MREqn(EquationOfMotion):
     def __call__(self,v,fs,sim,dt):
         '''calculate a new v based on the current v, the field state, and the
         bubble parameters stored in sim'''
-        a = a_bubble_MR(fs.u,v,fs.velgrad,fs.d,sim.d,sim.Cd,sim.Cm,sim.Cl,sim.g,sim.g_dir,u_drag=None)
+        a = a_bubble_MR(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.Cd,sim.Cm,sim.Cl,sim.g,sim.g_dir)
         return v+a*dt
     
 class LagrangianEOM(EquationOfMotion):
@@ -182,8 +177,21 @@ class Simulation:
         self.x[0,...] = np.random.uniform(low=0,high=2*np.pi,size=(n_bubs,3))
                 
         self.ti = 0
-        self.t = np.arange(self.t_min,self.t_max,self.dt_use)
+        self.t = np.arange(self.t_min,self.t_max,self.dt)
         self.n_t = len(self.t)
+        
+    def add_data(self,res):
+        '''
+        Add partially-complete simulation data stored in the dict res
+        '''
+        
+        self.x = res['x']
+        self.u = res['u']
+        self.v = res['v']
+        self.velgrad = res['velgrad']
+        self.dudt = res['dudt']
+        self.ti = res['ti']-1
+        self.g_dir = res['g_dir']
         
     def _advance(self,ti):
         
