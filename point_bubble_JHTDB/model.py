@@ -15,6 +15,179 @@ from scipy.spatial.transform import Rotation
 #data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
 data_dir = r'/home/idies/workspace/Temporary/danjruth/scratch//'
 
+class VelocityField:
+    '''Velocity field, with methods to get the velocity, dudt, and velocity
+    gradient given t and x. Defaults to a quiescent velocity field.'''
+    
+    def __init__(self,name='quiescent'):
+        self.name = name
+        pass
+    
+    def get_velocity(self,t,x):
+        return np.zeros((len(x),3))
+    
+    def get_dudt(self,t,x,u_t=None):
+        return np.zeros((len(x),3))
+    
+    def get_velocity_gradient(self,t,x,):
+        return np.zeros((len(x),3,3))
+    
+    def get_field_state(self,t,x):
+        '''get the state of the field at a point in time at given locations
+        '''
+        return FieldState(self,t,x)
+
+class FieldState:
+    '''velocity values at a given time and locations
+    '''
+    
+    def __init__(self,velocity_field,t,x):
+        
+        self.t = t
+        self.x = x
+        self.u = velocity_field.get_velocity(t,x)
+        self.dudt = velocity_field.get_dudt(t,x,u_t=self.u)
+        self.velgrad = velocity_field.get_velocity_gradient(t,x)
+        
+class EquationOfMotion:
+    '''the __call__ method returns the new particle velocities, given their
+    old velocities, the field state at their locations, the bubble parameters,
+    and teh timestep'''
+    
+    def __init__(self,name='no_forces'):
+        self.name = name
+    
+    def __call__(self,v,fs,sim,dt):
+        '''by default just return the old velocity'''
+        return v.copy()
+    
+class MREqn(EquationOfMotion):
+    def __init__(self):
+        EquationOfMotion.__init__(self,name='MaxeyRiley_point')
+        
+    def __call__(self,v,fs,sim,dt):
+        '''calculate a new v based on the current v, the field state, and the
+        bubble parameters stored in sim'''
+        # (u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir)
+        a = a_bubble_MR(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.Cd,sim.Cm,sim.Cl,sim.g,sim.g_dir)
+        return v+a*dt
+    
+class LagrangianEOM(EquationOfMotion):
+    def __init__(self):
+        EquationOfMotion.__init__(self,name='Lagrangian')
+        
+    def __call__(self,v,fs,sim,dt):
+        '''return the fluid velocity at the particle locations
+        '''
+        return fs.u
+
+class Simulation:
+    
+    def __init__(self,velocity_field,bubble_params,sim_params,eom):
+        
+        self.velocity_field = velocity_field
+        self.bubble_params = bubble_params
+        self.sim_params = sim_params
+        self.eom = eom
+        
+        # extract bubble parameters
+        for key in bubble_params:
+            setattr(self,bubble_params[key])
+        # self.d = bubble_params['d']
+        # self.g = bubble_params['g']
+        # self.Cm = bubble_params['Cm']
+        # self.Cl = bubble_params['Cl']
+        # self.Cd = bubble_params['Cd']
+        self.v_q = quiescent_speed(self.d,self.g,self.Cd)
+        
+        # extract simulation parameters
+        for key in sim_params:
+            setattr(self,sim_params[key])
+        # self.n_bubs = sim_params['n_bubs']
+        # self.dt = sim_params['dt']
+        # self.t_min = sim_params['t_min']
+        # self.t_max = sim_params['t_max']
+        # self.fname = sim_params['fname']
+        
+        # initial setup
+        self.t = np.arange(self.t_min,self.t_max,self.dt)
+        self.n_t = len(self.t)
+        
+    def init_sim(self,g_dir='random'):
+        '''
+        Initialize the simulation
+        '''
+        
+        n_t = self.n_t
+        n_bubs = self.n_bubs
+        
+        # define the direction of gravity for each bubble
+        if g_dir == 'random':
+            self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:]
+        elif g_dir == 'z':
+            self.g_dir = np.zeros((n_bubs,3))
+            self.g_dir[:,-1] = 1
+        
+        self.x = np.zeros((n_t,n_bubs,3))
+        self.u = np.zeros((n_t,n_bubs,3))
+        self.v = np.zeros((n_t,n_bubs,3))
+        self.velgrad = np.zeros((n_t,n_bubs,3,3))
+        self.dudt = np.zeros((n_t,n_bubs,3))
+        
+        self.x[0,...] = np.random.uniform(low=0,high=2*np.pi,size=(n_bubs,3))
+                
+        self.ti = 0
+        self.t = np.arange(self.t_min,self.t_max,self.dt)
+        self.n_t = len(self.t)
+        
+    def add_data(self,res):
+        '''
+        Add partially-complete simulation data stored in the dict res
+        '''
+        
+        self.x = res['x']
+        self.u = res['u']
+        self.v = res['v']
+        self.velgrad = res['velgrad']
+        self.dudt = res['dudt']
+        self.ti = res['ti']-1
+        self.g_dir = res['g_dir']
+        
+    def _advance(self,ti):
+        
+        # get the field state
+        fs = self.velocity_field.get_field_state(self.t[ti],self.x[ti,...])
+
+        # next velocity and position, given current field state and velocity
+        v_new = self.eom(self.v[ti,...],fs,self,self.dt)
+        x_new = self.x[ti,...]+v_new*self.dt
+
+        # store the data
+        self.u[ti+1,...] = fs.u
+        self.v[ti+1,...] = v_new
+        self.x[ti+1,...] = x_new
+        self.dudt[ti+1,...] = fs.dudt
+        self.velgrad[ti+1,...] = fs.velgrad
+        
+    def save(self,fpath_save=None):
+        '''Save the bubble parameters, simulation parameters, and results of 
+        the simulation as a dict. Save just the names of the velocity field
+        and the equation of motion (since these classes can't be pickled
+        reliably)
+        '''
+        
+        if fpath_save is None:
+            fpath_save = None
+        
+        save_vars = ['bubble_params','sim_params',
+                     'g_dir',
+                     'x','v','u','dudt','velgrad',
+                     'ti']        
+        res = {attr:getattr(self,attr) for attr in save_vars}
+        res['velocity_field_name'] = self.velocity_field.name
+        res['equation_of_motion_name'] = self.eom.name
+        return res
+
 def get_vorticity(velgrad):
     vort = np.zeros((len(velgrad),3)) # 
     vort[:,0] = velgrad[...,2,1] - velgrad[...,1,2]
@@ -73,169 +246,7 @@ def a_bubble_MR(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
 def quiescent_speed(d,g,Cd):
     return np.sqrt(4./3 * d * g /Cd)
 
-class VelocityField:
-    
-    def __init__(self,name='none'):
-        self.name = name
-        pass
-    
-    def get_velocity(self,t,x):
-        pass
-    
-    def get_dudt(self,t,x,u_t=None):
-        pass
-    
-    def get_velocity_gradient(self,t,x,):
-        pass
-    
-    def get_field_state(self,t,x):
-        '''get the state of the field at a point in time at given locations
-        '''
-        return FieldState(self,t,x)
 
-class FieldState:
-    '''velocity values at a given time and locations
-    '''
-    
-    def __init__(self,velocity_field,t,x):
-        
-        self.t = t
-        self.x = x
-        self.u = velocity_field.get_velocity(t,x)
-        self.dudt = velocity_field.get_dudt(t,x,u_t=self.u)
-        self.velgrad = velocity_field.get_velocity_gradient(t,x)
-        
-class EquationOfMotion:
-    '''the __call__ method returns the new particle velocities, given their
-    old velocities, the field state at their locations, the bubble parameters,
-    and teh timestep'''
-    def __init__(self,name='none'):
-        self.name = name
-        pass
-    
-class MREqn(EquationOfMotion):
-    def __init__(self):
-        EquationOfMotion.__init__(self)
-        
-    def __call__(self,v,fs,sim,dt):
-        '''calculate a new v based on the current v, the field state, and the
-        bubble parameters stored in sim'''
-        a = a_bubble_MR(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.Cd,sim.Cm,sim.Cl,sim.g,sim.g_dir)
-        return v+a*dt
-    
-class LagrangianEOM(EquationOfMotion):
-    def __init__(self):
-        EquationOfMotion.__init__(self)
-        
-    def __call__(self,v,fs,sim,dt):
-        '''return the fluid velocity at the particle locations
-        '''
-        return fs.u
-
-class Simulation:
-    
-    def __init__(self,velocity_field,bubble_params,sim_params,eom):
-        
-        self.velocity_field = velocity_field
-        self.bubble_params = bubble_params
-        self.sim_params = sim_params
-        self.eom = eom
-        
-        # extract bubble parameters for MR equation
-        self.d = bubble_params['d']
-        self.g = bubble_params['g']
-        self.Cm = bubble_params['Cm']
-        self.Cl = bubble_params['Cl']
-        self.Cd = bubble_params['Cd']
-        
-        # extract simulation parameters
-        self.n_bubs = sim_params['n_bubs']
-        self.dt = sim_params['dt']
-        self.t_min = sim_params['t_min']
-        self.t_max = sim_params['t_max']
-        self.fname = sim_params['fname']
-        
-        # initial setup
-        self.t = np.arange(self.t_min,self.t_max,self.dt)
-        self.n_t = len(self.t)
-        
-    def init_sim(self):
-        '''
-        Initialize the simulation
-        '''
-        
-        n_t = self.n_t
-        n_bubs = self.n_bubs
-        
-        # gravity direction chosen randomly for each bubble
-        self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:] # gravity direction
-        
-        self.x = np.zeros((n_t,n_bubs,3))
-        self.u = np.zeros((n_t,n_bubs,3))
-        self.v = np.zeros((n_t,n_bubs,3))
-        self.velgrad = np.zeros((n_t,n_bubs,3,3))
-        self.dudt = np.zeros((n_t,n_bubs,3))
-        
-        self.x[0,...] = np.random.uniform(low=0,high=2*np.pi,size=(n_bubs,3))
-                
-        self.ti = 0
-        self.t = np.arange(self.t_min,self.t_max,self.dt)
-        self.n_t = len(self.t)
-        
-    def add_data(self,res):
-        '''
-        Add partially-complete simulation data stored in the dict res
-        '''
-        
-        self.x = res['x']
-        self.u = res['u']
-        self.v = res['v']
-        self.velgrad = res['velgrad']
-        self.dudt = res['dudt']
-        self.ti = res['ti']-1
-        self.g_dir = res['g_dir']
-        
-    def _advance(self,ti):
-        
-        vf = self.velocity_field
-        t = self.t[ti]
-        
-        # get the field state
-        fs = vf.get_field_state(t,self.x[ti,...])
-
-        # new velocity and new position
-        v_new = self.eom(self.v[ti,...],fs,self,self.dt)
-        x_new = self.x[ti,...]+v_new*self.dt
-
-        # store the data
-        self.u[ti+1,...] = fs.u
-        self.v[ti+1,...] = v_new
-        self.x[ti+1,...] = x_new
-        self.dudt[ti+1,...] = fs.dudt
-        self.velgrad[ti+1,...] = fs.velgrad
-        
-    def save(self,fpath_save=None):
-        '''Save the bubble parameters, simulation parameters, and results of 
-        the simulation as a dict. Save just the names of the velocity field
-        and the equation of motion (since these classes can't be pickled
-        reliably)
-        '''
-        
-        if fpath_save is None:
-            fpath_save = None
-        
-        save_vars = ['bubble_params','sim_params',
-                     'g_dir',
-                     'x','v','u','dudt','velgrad',
-                     'ti']        
-        res = {attr:getattr(self,attr) for attr in save_vars}
-        res['velocity_field_name'] = self.velocity_field.name
-        res['equation_of_motion_name'] = self.eom.name
-        return res
-        
-        #print('Saving data to '+fpath_save)
-        #with open(fpath_save, 'wb') as handle:
-        #    pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
 
 class PointBubbleSimulation:
