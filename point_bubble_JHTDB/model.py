@@ -161,24 +161,42 @@ class Simulation:
         self.dudt[ti+1,...] = fs.dudt
         self.velgrad[ti+1,...] = fs.velgrad
         
-    def save(self,fpath_save=None):
-        '''Save the bubble parameters, simulation parameters, and results of 
-        the simulation as a dict. Save just the names of the velocity field
+    def to_dict(self):
+        '''Put the bubble parameters, simulation parameters, and results of 
+        the simulation in a dict. Save just the names of the velocity field
         and the equation of motion (since these classes can't be pickled
         reliably)
         '''
         
-        if fpath_save is None:
-            fpath_save = None
-        
         save_vars = ['bubble_params','sim_params',
                      'g_dir',
                      'x','v','u','dudt','velgrad',
-                     'ti']        
+                     'ti']
         res = {attr:getattr(self,attr) for attr in save_vars}
         res['velocity_field_name'] = self.velocity_field.name
         res['equation_of_motion_name'] = self.eom.name
         return res
+    
+    def save(self,fpath):
+        '''put the results into a dict and pickle it'''
+        res = self.to_dict()
+        print('Saving data to '+fpath)
+        with open(fpath, 'wb') as handle:
+            pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            
+    def add_data_from_dict(self,res):
+        
+        # if d is a filepath to the pickled dict, load the dict
+        if type(res)==str:
+            print('Loading data from '+res)
+            with open(res, 'rb') as handle:
+                res = pickle.load(handle)
+        
+        # set the dict entries as attributes
+        [setattr(self,key,res[key]) for key in res]
+        
+        # just to be safe, re-do the last timestep
+        self.ti = max(0,self.ti-1)
 
 def get_vorticity(velgrad):
     vort = np.zeros((len(velgrad),3)) # 
