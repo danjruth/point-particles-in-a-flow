@@ -93,29 +93,21 @@ class Simulation:
         # extract bubble parameters
         for key in bubble_params:
             setattr(self,key,bubble_params[key])
-        # self.d = bubble_params['d']
-        # self.g = bubble_params['g']
-        # self.Cm = bubble_params['Cm']
-        # self.Cl = bubble_params['Cl']
-        # self.Cd = bubble_params['Cd']
         self.v_q = quiescent_speed(self.d,self.g,self.Cd)
         
         # extract simulation parameters
         for key in sim_params:
             setattr(self,key,sim_params[key])
-        # self.n_bubs = sim_params['n_bubs']
-        # self.dt = sim_params['dt']
-        # self.t_min = sim_params['t_min']
-        # self.t_max = sim_params['t_max']
-        # self.fname = sim_params['fname']
         
         # initial setup
         self.t = np.arange(self.t_min,self.t_max,self.dt)
         self.n_t = len(self.t)
         
-    def init_sim(self,g_dir='random'):
+    def init_sim(self,g_dir='random',pos_lims=((0,0,0),(2*np.pi,2*np.pi,2*np.pi))):
         '''
-        Initialize the simulation
+        Initialize the simulation. Should only be called when the simulation is
+        first created, not when it's being reloaded from some intermediate
+        point.
         '''
         
         n_t = self.n_t
@@ -134,7 +126,7 @@ class Simulation:
         self.velgrad = np.zeros((n_t,n_bubs,3,3))
         self.dudt = np.zeros((n_t,n_bubs,3))
         
-        self.x[0,...] = np.random.uniform(low=0,high=2*np.pi,size=(n_bubs,3))
+        self.x[0,...] = np.random.uniform(low=pos_lims[0],high=pos_lims[1],size=(n_bubs,3))
                 
         self.ti = 0
         self.t = np.arange(self.t_min,self.t_max,self.dt)
