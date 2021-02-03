@@ -11,21 +11,37 @@ from .model import VelocityField
 try:
     from pyJHTDB import libJHTDB
     lJHTDB = libJHTDB()
-    lJHTDB.initialize(exit_on_error=True) # hopefully this will throw an error instead of just exiting?
+    lJHTDB.initialize(exit_on_error=True)
     lJHTDB_available = True
 except ImportError:
     print('Unable to import pyJHTDB and initialize')
     lJHTDB_available = False
 
-dx = 2*np.pi / 1024.
-
+# only define the velocity field class for this if the interface to the JHTDB
+# is available
 if lJHTDB_available:
     
     class JHTDBVelocityField(VelocityField):
+        
         def __init__(self,data_set='isotropic1024coarse'):
             VelocityField.__init__(self,name='JHTDB_'+self.data_set)
             self.data_set = data_set
             self.lJHTDB = lJHTDB
+            
+            # store physical and simulation propertie
+            if data_set=='isotropic1024coarse':
+                self.u_rms = 0.686
+                self.L_int = 1.364
+                self.T_int = self.L_int/self.u_rms
+                self.eta = 0.00280
+                self.T_eta = 0.0424
+                self.lam = 0.113
+                
+                self.dx = 2*np.pi / 1024.
+                self.dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig
+                self.dt_orig = 0.0002
+                self.t_min = 0.
+                self.t_max = 10.
             
         def get_velocity(self,t,x,lJHTDB=None):
             if lJHTDB is None:
