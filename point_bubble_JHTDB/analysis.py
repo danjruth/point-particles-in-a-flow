@@ -7,26 +7,92 @@ Created on Sun Jul 19 11:55:39 2020
 
 import numpy as np
 import pickle
-from point_bubble_JHTDB import model
+from . import model
 import pandas as pd
+
+class CompleteSim():
+    
+    def __init__(self,sim):
+        
+        # copy parameters from the Simulation
+        self.velocity_field = sim.velocity_field
+        self.bubble_params = sim.bubble_params
+        self.sim_params = sim.sim_params
+        self.eom = sim.eom
+        self = model.assign_attributes(self,self.bubble_params,self.sim_params)
+        
+        # characteristic scales of the velocity field
+        self.u_vf = sim.velocity_field.u_char
+        self.L_vf = sim.velocity_field.L_char
+        self.T_vf = sim.velocity_field.T_char
+        
+        # get the forces and rotate everything so z is aligned with gravity for each bubble
+        self._forces_and_rotation(sim)
+        
+    def _forces_and_rotation(self,sim):
+        
+        # slip, vorticity, and bubble volume
+        slip = sim.v[:-1] - sim.u[1:]
+        vort = get_vorticity(sim.velgrad)
+        vol = (sim.d/2.)**3 * 4./3 * np.pi
+        
+        # gravity force
+        grav_z = sim.g * vol
+        
+        # calculate the forces, in DNS coords initially
+        press = []
+        drag = []
+        lift = []
+        u_times_deldotu_all = []
+        for i in [0,1,2]:
+            
+            u_times_deldotu = np.sum(sim.velgrad[1:,:,i,:]*sim.u[1:],axis=-1)
+            u_times_deldotu_all.append(u_times_deldotu)
+            press.append((1+sim.Cm)* vol * (sim.dudt[1:,:,i] + u_times_deldotu))
+            drag.append(-1*sim.Cd * 0.5 * np.pi * (sim.d/2)**2 * slip[...,i] * np.linalg.norm(slip[:,...],axis=-1))        
+            lift.append(-1 * sim.Cl * np.cross(slip,vort[1:])[...,i] * vol)
+            
+        # make each arrays
+        sim.u_times_deldotu = np.moveaxis(np.array(u_times_deldotu_all),0,-1)
+        sim.press = np.moveaxis(np.array(press),0,-1)
+        sim.drag = np.moveaxis(np.array(drag),0,-1)
+        sim.lift = np.moveaxis(np.array(lift),0,-1)
+        sim.slip = slip
+        sim.vort = vort
+        sim.grav_z = grav_z
+        
+        # store rotated numerical results in a dict
+        r = {}
+        fields_rot = ['v','u','x','vort','dudt','u_times_deldotu','press','drag','lift']
+        for f in fields_rot:
+            r[f] = rot_all(getattr(sim,f),sim.g_dir)            
+        r['grav_z'] = grav_z
+        r['t'] = sim.t
+            
+        # make this dict an attribute; can be accessed via subscripting
+        self.r = r
+        
+    def __getitem__(self,f):
+        return self.r[f]
+
 
 def get_hist(y,bins=1001):
     '''return a normalized pdf and x locs of bin centers'''
     hist,edges = np.histogram(y[~np.isnan(y)],bins=bins,density=True)
     return edges[:-1]+np.diff(edges)/2, hist
 
-def get_rot_dirs(g_dir):
-    '''get vectors denoting the new x,y,z directions wrt the DNS coordinate system'''
+# def get_rot_dirs(g_dir):
+#     '''get vectors denoting the new x,y,z directions wrt the DNS coordinate system'''
     
-    # z is in the direction of gravity
-    z_dir = g_dir.copy()
+#     # z is in the direction of gravity
+#     z_dir = g_dir.copy()
     
-    # x direction has to be normal to z, and we arbitrarily choose it's also normal to the DNS x
-    x_dir_unscaled = np.cross(z_dir,[1,0,0])
-    x_dir = x_dir_unscaled / np.linalg.norm(x_dir_unscaled)
+#     # x direction has to be normal to z, and we arbitrarily choose it's also normal to the DNS x
+#     x_dir_unscaled = np.cross(z_dir,[1,0,0])
+#     x_dir = x_dir_unscaled / np.linalg.norm(x_dir_unscaled)
     
-    # get the y direction
-    y_dir = np.cross(z_dir,x_dir)
+#     # get the y direction
+#     y_dir = np.cross(z_dir,x_dir)
     
 
 def rot_coord_system(arr,g_dir):

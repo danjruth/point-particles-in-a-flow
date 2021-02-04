@@ -6,7 +6,7 @@ Created on Mon Jun 29 16:50:22 2020
 """
 
 import numpy as np
-from .model import VelocityField
+from ..model import VelocityField
 
 try:
     from pyJHTDB import libJHTDB
@@ -24,7 +24,8 @@ if lJHTDB_available:
     class JHTDBVelocityField(VelocityField):
         
         def __init__(self,data_set='isotropic1024coarse'):
-            VelocityField.__init__(self,name='JHTDB_'+self.data_set)
+            #VelocityField.__init__(self,name='JHTDB_'+data_set)
+            super().__init__(name='JHTDB_'+data_set)
             self.data_set = data_set
             self.lJHTDB = lJHTDB
             
@@ -36,6 +37,10 @@ if lJHTDB_available:
                 self.eta = 0.00280
                 self.T_eta = 0.0424
                 self.lam = 0.113
+                
+                self.u_char = self.u_rms
+                self.L_char = self.L_int
+                self.T_char = self.T_int
                 
                 self.dx = 2*np.pi / 1024.
                 self.dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig

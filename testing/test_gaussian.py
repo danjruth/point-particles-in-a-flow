@@ -6,6 +6,7 @@ Created on Tue Feb  2 11:49:32 2021
 """
 
 from point_bubble_JHTDB import model, analysis
+from point_bubble_JHTDB.velocity_fields import gaussian
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -37,44 +38,7 @@ sim_params = {'n_bubs':200,
               'fname':'test'}
 
 def make_vf(n_modes=8,u_rms=0.1,L_int=0.01):
-
-    T_int = L_int/u_rms
-    
-    # random coefficients/wavenumbers/frequencies for each mode
-    b = np.random.normal(scale=u_rms,size=(n_modes,3))
-    c = np.random.normal(scale=u_rms,size=(n_modes,3))
-    k = np.random.normal(scale=1./L_int,size=(n_modes,3))
-    omega = np.random.normal(scale=1/T_int,size=(n_modes))
-    
-    def get_velocity(t,x):
-        vel = np.zeros((len(x),3))
-        for m in range(n_modes):
-            # outer product of the sin/cos term (len n_bubs) and the 3 coefficients for this mode gives shape (n_bubs,3)
-            mode_contribution = np.outer(np.sin(np.dot(x,k[m,:])+omega[m]*t),b[m,:]) + np.outer(np.cos(np.dot(x,k[m,:])+omega[m]*t),c[m,:])
-            vel = vel + mode_contribution
-        return vel/np.sqrt(n_modes)
-    
-    def get_velocity_gradient(t,x):
-        velgrad = np.zeros((len(x),3,3))
-        for m in range(n_modes):
-            mode_contribution = np.zeros((len(x),3,3))
-            for j in range(3):
-                mode_contribution[:,:,j] = k[m,j]*np.outer(np.cos(np.dot(x,k[m,:])+omega[m]*t),b[m,:]) - k[m,j]*np.outer(np.sin(np.dot(x,k[m,:])+omega[m]*t),c[m,:])
-            velgrad = velgrad + mode_contribution
-        return velgrad/np.sqrt(n_modes)
-    
-    def get_dudt(t,x,u_t=None):
-        dudt = np.zeros((len(x),3))
-        for m in range(n_modes):
-            mode_contribution = omega[m]*np.outer(np.cos(np.dot(x,k[m,:])+omega[m]*t),b[m,:]) - omega[m]*np.outer(np.sin(np.dot(x,k[m,:])+omega[m]*t),c[m,:])
-            dudt = dudt + mode_contribution
-        return dudt/np.sqrt(n_modes)
-    
-    vf.get_velocity = get_velocity
-    vf.get_velocity_gradient = get_velocity_gradient
-    vf.get_dudt = get_dudt
-    
-    return vf
+    return gaussian.RandomGaussianVelocityField(n_modes=n_modes,u_rms=u_rms,L_int=L_int)
 
 class Case:
     
@@ -113,14 +77,39 @@ class Case:
                 sim._advance(ti)
             v = analysis.rot_all(sim.v,sim.g_dir,)
             nondim_speed = np.mean(v[int(len(v)/2):,:,2]) / self.v_q
-            return nondim_speed
+            sim.nondim_speed = nondim_speed
+            return sim
         
-        self.nondim_speeds = np.array(toolkit.parallel.parallelize_job(do_job, range(n)))
-        self.nondim_speed = np.mean(self.nondim_speeds)
+        self.sims = np.array(toolkit.parallel.parallelize_job(do_job, range(n)))
+        self.nondim_speed = np.mean([j.nondim_speed for j in self.sims])
         
 #c = Case(2e-3,9.81,0.01,0.1)
 #c.run()
 #stophere
+
+bubble_params = {'d':2e-3,
+                     'g':9.81,
+                     'Cm':0.5,
+                     'Cd':1,
+                     'Cl':0.0}
+
+sim_params = {'n_bubs':200,
+              'dt':1e-4,
+              't_min':0,
+              't_max':0.4,
+              'fname':'test'}
+
+vf = make_vf(n_modes=12,u_rms=0.1,L_int=0.01)
+#vf.get_velocity(3,np.atleast_2d([3,2,1]))
+#stophere
+sim = model.Simulation(vf,bubble_params,sim_params,mr)
+sim.init_sim()
+sim.run()    
+a = analysis.CompleteSim(sim)
+plt.figure();plt.plot(a['t']/a.T_vf,a['v'][:,:,:].mean(axis=1)/a.v_q,ls='-')
+stophere
+
+vf = make_vf()
 
 #d_vec = [1e-3,2e-3,3e-3]
 d_vec = [1e-3,2e-3,4e-3,6e-3]

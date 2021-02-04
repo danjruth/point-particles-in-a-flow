@@ -7,23 +7,33 @@ Created on Mon Jun 29 14:59:40 2020
 
 import numpy as np
 import pickle
-import time as time_pkg
-#from point_bubble_JHTDB import interface
-import os.path
+#import os.path
 from scipy.spatial.transform import Rotation
+#from . import analysis
 
 #data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
 data_dir = r'/home/idies/workspace/Temporary/danjruth/scratch//'
 
+'''
+Classes for the velocity field
+'''
+
 class VelocityField:
     '''Velocity field, with methods to get the velocity, dudt, and velocity
-    gradient given t and x. Defaults to a quiescent velocity field.'''
+    gradient given t and x. Defaults to a quiescent velocity field. Derived 
+    classes (for Gaussian psuedoturbulence or HIT from the JHTDB, for example)
+    in the velocity_fields submodule.
+    '''
     
     def __init__(self,name='quiescent'):
         self.name = name
+        self.u_char = np.nan
+        self.T_char = np.nan
+        self.L_char = np.nan
         pass
     
     def get_velocity(self,t,x):
+        print('getting quiescent velocity')
         return np.zeros((len(x),3))
     
     def get_dudt(self,t,x,u_t=None):
@@ -48,6 +58,10 @@ class FieldState:
         self.u = velocity_field.get_velocity(t,x)
         self.dudt = velocity_field.get_dudt(t,x,u_t=self.u)
         self.velgrad = velocity_field.get_velocity_gradient(t,x)
+        
+'''
+Classes for the equations of motion
+'''
         
 class EquationOfMotion:
     '''the __call__ method returns the new particle velocities, given their
@@ -80,6 +94,27 @@ class LagrangianEOM(EquationOfMotion):
         '''return the fluid velocity at the particle locations
         '''
         return fs.u
+    
+'''
+Class for a simulation
+'''
+
+def assign_attributes(obj,bubble_params,sim_params):
+    '''
+    Make the keys in bubble_params and sim_params attributes of obj, and add
+    on additional computed attirbutes.
+    '''
+    
+    # extract bubble parameters
+    for key in bubble_params:
+        setattr(obj,key,bubble_params[key])
+    obj.v_q = quiescent_speed(obj.d,obj.g,obj.Cd)
+    
+    # extract simulation parameters
+    for key in sim_params:
+        setattr(obj,key,sim_params[key])
+        
+    return obj
 
 class Simulation:
     
@@ -90,14 +125,7 @@ class Simulation:
         self.sim_params = sim_params
         self.eom = eom
         
-        # extract bubble parameters
-        for key in bubble_params:
-            setattr(self,key,bubble_params[key])
-        self.v_q = quiescent_speed(self.d,self.g,self.Cd)
-        
-        # extract simulation parameters
-        for key in sim_params:
-            setattr(self,key,sim_params[key])
+        self = assign_attributes(self,bubble_params,sim_params)
         
         # initial setup
         self.t = np.arange(self.t_min,self.t_max,self.dt)
@@ -155,11 +183,16 @@ class Simulation:
         x_new = self.x[ti,...]+v_new*self.dt
 
         # store the data
-        self.u[ti+1,...] = fs.u
-        self.v[ti+1,...] = v_new
-        self.x[ti+1,...] = x_new
+        self.u[ti+1,...] = fs.u.copy()
+        self.v[ti+1,...] = v_new.copy()
+        self.x[ti+1,...] = x_new.copy()
         self.dudt[ti+1,...] = fs.dudt
         self.velgrad[ti+1,...] = fs.velgrad
+        
+    def run(self):
+        for ti in np.arange(self.ti,self.n_t-1,1):
+            self._advance(ti)
+            self.ti = ti
         
     def to_dict(self):
         '''Put the bubble parameters, simulation parameters, and results of 
@@ -197,6 +230,10 @@ class Simulation:
         
         # just to be safe, re-do the last timestep
         self.ti = max(0,self.ti-1)
+        
+'''
+Functions involved in the equations of motion
+'''
 
 def get_vorticity(velgrad):
     vort = np.zeros((len(velgrad),3)) # 
@@ -255,9 +292,6 @@ def a_bubble_MR(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
 
 def quiescent_speed(d,g,Cd):
     return np.sqrt(4./3 * d * g /Cd)
-
-
-    
 
 # class PointBubbleSimulation:
     
