@@ -23,7 +23,8 @@ L_int = 0.01
 T_int = L_int/u_rms
 import toolkit.parallel
 
-mr = model.MREqn()
+mr = model.MaxeyRileyPointBubbleConstantCoefs()
+#mr = model.LagrangianEOM()
 
 bubble_params = {'d':2e-3,
                  'g':9.81,
@@ -96,17 +97,27 @@ bubble_params = {'d':2e-3,
 sim_params = {'n_bubs':200,
               'dt':1e-4,
               't_min':0,
-              't_max':0.4,
+              't_max':0.1,
               'fname':'test'}
 
 vf = make_vf(n_modes=12,u_rms=0.1,L_int=0.01)
+stophere
+
+x = np.linspace(0,.3,91)
+y = np.linspace(0,0.4,101)
+X,Y = np.meshgrid(x,y)
+Z = np.zeros_like(X)
+v2d = vf.get_2d_field(3, X, Y, Z)
+plt.figure()
+plt.pcolormesh(X,Y,v2d[:,:,0],cmap='seismic')
+stpohere
 #vf.get_velocity(3,np.atleast_2d([3,2,1]))
 #stophere
 sim = model.Simulation(vf,bubble_params,sim_params,mr)
-sim.init_sim()
+sim.init_sim(vz_0='v_q')
 sim.run()    
-a = analysis.CompleteSim(sim)
-plt.figure();plt.plot(a['t']/a.T_vf,a['v'][:,:,:].mean(axis=1)/a.v_q,ls='-')
+a = analysis.CompleteSim(sim,norm=True)
+plt.figure();plt.plot(a['t'],a['v'][:,:,:].mean(axis=1),ls='-')
 stophere
 
 vf = make_vf()

@@ -28,6 +28,17 @@ class RandomGaussianVelocityField(VelocityField):
         self.k = np.random.normal(scale=1./L_int,size=(n_modes,3))
         self.omega = np.random.normal(scale=1/self.T_int,size=(n_modes))
         
+    def to_dict(self):
+        d = {}
+        attrs = ['n_modes','u_rms','L_int','T_int','u_char','L_char','T_char',
+                 'b','c','k','omega]']
+        for attr in attrs:
+            d[attr] = getattr(self,attr)
+        return d
+    
+    def save(self,fpath):
+        pass
+        
     def get_velocity(self,t,x):
         b = self.b
         c = self.c

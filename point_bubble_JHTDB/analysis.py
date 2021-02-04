@@ -12,7 +12,10 @@ import pandas as pd
 
 class CompleteSim():
     
-    def __init__(self,sim):
+    def __init__(self,sim,norm=False):
+        
+        # should arrays be normalized when returned
+        self.norm = norm
         
         # copy parameters from the Simulation
         self.velocity_field = sim.velocity_field
@@ -57,23 +60,38 @@ class CompleteSim():
         sim.press = np.moveaxis(np.array(press),0,-1)
         sim.drag = np.moveaxis(np.array(drag),0,-1)
         sim.lift = np.moveaxis(np.array(lift),0,-1)
-        sim.slip = slip
+        sim.slip = slip # sim.v - sim.u # differs from the definition of slip used to calculate the forces!
         sim.vort = vort
         sim.grav_z = grav_z
         
         # store rotated numerical results in a dict
         r = {}
-        fields_rot = ['v','u','x','vort','dudt','u_times_deldotu','press','drag','lift']
+        fields_rot = ['v','u','slip','x','vort','dudt','u_times_deldotu','press','drag','lift']
         for f in fields_rot:
             r[f] = rot_all(getattr(sim,f),sim.g_dir)            
-        r['grav_z'] = grav_z
+        self.grav_z = grav_z
         r['t'] = sim.t
+        r['x'] = r['x'] - r['x'][0,:,:]
             
         # make this dict an attribute; can be accessed via subscripting
         self.r = r
         
     def __getitem__(self,f):
-        return self.r[f]
+        
+        # map characteristic values to the variables they non-dimensionalize
+        char_vals = {self.v_q:['v','u','slip'],
+                     self.L_vf:['x'],
+                     self.grav_z:['dudt','u_times_deldotu'],
+                     self.T_vf:['t'],
+                     self.grav_z:['press','drag','lift']}
+        
+        arr = self.r[f]
+        if self.norm:
+            for key in char_vals:
+                if f in char_vals[key]:
+                    return arr/key
+        else:   
+            return arr
 
 
 def get_hist(y,bins=1001):

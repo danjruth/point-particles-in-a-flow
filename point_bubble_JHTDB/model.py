@@ -32,6 +32,11 @@ class VelocityField:
         self.L_char = np.nan
         pass
     
+    '''
+    Functions to get velocity, dudt, and velocity gradient, which should be
+    overwritten in derived classes for specific velocity fields.
+    '''
+    
     def get_velocity(self,t,x):
         print('getting quiescent velocity')
         return np.zeros((len(x),3))
@@ -42,10 +47,27 @@ class VelocityField:
     def get_velocity_gradient(self,t,x,):
         return np.zeros((len(x),3,3))
     
+    '''
+    Functions common to any derived class of VelocityField
+    '''
+    
     def get_field_state(self,t,x):
         '''get the state of the field at a point in time at given locations
         '''
         return FieldState(self,t,x)
+    
+    def get_2d_velocity_field(self,t,X,Y,Z):
+        XYZ = np.array([X.flatten(),Y.flatten(),Z.flatten()]).T
+        vel = self.get_velocity(t,XYZ)
+        vel = np.reshape(vel,(np.shape(X)[0],np.shape(X)[1],3))
+        return vel
+    
+    def get_2d_velocity_gradient_field(self,t,X,Y,Z):
+        XYZ = np.array([X.flatten(),Y.flatten(),Z.flatten()]).T
+        velgrad = self.get_velocity_gradient(t,XYZ)
+        velgrad = np.reshape(velgrad,(np.shape(X)[0],np.shape(X)[1],3,3))
+        return velgrad
+        
 
 class FieldState:
     '''velocity values at a given time and locations
@@ -75,15 +97,15 @@ class EquationOfMotion:
         '''by default just return the old velocity'''
         return v.copy()
     
-class MREqn(EquationOfMotion):
+class MaxeyRileyPointBubbleConstantCoefs(EquationOfMotion):
     def __init__(self):
-        EquationOfMotion.__init__(self,name='MaxeyRiley_point')
+        EquationOfMotion.__init__(self,name='MaxeyRiley_pointbubble_constantcoefficients')
         
     def __call__(self,v,fs,sim,dt):
         '''calculate a new v based on the current v, the field state, and the
         bubble parameters stored in sim'''
         # (u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir)
-        a = a_bubble_MR(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.Cd,sim.Cm,sim.Cl,sim.g,sim.g_dir)
+        a = a_bubble_MR_constantcoefficients(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.Cd,sim.Cm,sim.Cl,sim.g,sim.g_dir)
         return v+a*dt
     
 class LagrangianEOM(EquationOfMotion):
@@ -131,7 +153,7 @@ class Simulation:
         self.t = np.arange(self.t_min,self.t_max,self.dt)
         self.n_t = len(self.t)
         
-    def init_sim(self,g_dir='random',pos_lims=((0,0,0),(2*np.pi,2*np.pi,2*np.pi))):
+    def init_sim(self,g_dir='random',pos_lims=((0,0,0),(2*np.pi,2*np.pi,2*np.pi)),vz_0=0):
         '''
         Initialize the simulation. Should only be called when the simulation is
         first created, not when it's being reloaded from some intermediate
@@ -140,6 +162,9 @@ class Simulation:
         
         n_t = self.n_t
         n_bubs = self.n_bubs
+        
+        if vz_0 == 'v_q':
+            vz_0 = self.v_q
         
         # define the direction of gravity for each bubble
         if g_dir == 'random':
@@ -151,6 +176,7 @@ class Simulation:
         self.x = np.zeros((n_t,n_bubs,3))
         self.u = np.zeros((n_t,n_bubs,3))
         self.v = np.zeros((n_t,n_bubs,3))
+        self.v[0,:,:] = vz_0 * self.g_dir
         self.velgrad = np.zeros((n_t,n_bubs,3,3))
         self.dudt = np.zeros((n_t,n_bubs,3))
         
@@ -261,7 +287,7 @@ def calc_lift_force(slip,vort,d,Cl):
     lift = -1 * Cl * np.cross(slip,vort) * (d/2)**3*4./3*np.pi
     return lift
 
-def a_bubble_MR(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
+def a_bubble_MR_constantcoefficients(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
     '''
     calculate a bubble's accceleration given its velocity, the local water
     velocity, and the bubble size
