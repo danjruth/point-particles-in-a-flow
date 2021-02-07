@@ -28,6 +28,12 @@ class CompleteSim():
         self.u_vf = sim.velocity_field.u_char
         self.L_vf = sim.velocity_field.L_char
         self.T_vf = sim.velocity_field.T_char
+            
+        # nondimensional numbers
+        self.dstar = self.d / self.L_vf
+        self.dstar_by_Cd = self.dstar / self.Cd
+        self.beta = self.u_vf / self.v_q
+        self.Fr = self.u_vf / np.sqrt(self.d*self.g)
         
         # get the forces and rotate everything so z is aligned with gravity for each bubble
         self._forces_and_rotation(sim)
@@ -72,6 +78,9 @@ class CompleteSim():
         self.grav_z = grav_z
         r['t'] = sim.t
         r['x'] = r['x'] - r['x'][0,:,:]
+        
+        for var in ['v','u','slip','x','vort','dudt','t']:
+            r[var] = r[var][:-1]
             
         # make this dict an attribute; can be accessed via subscripting
         self.r = r

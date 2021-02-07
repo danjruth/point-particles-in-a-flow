@@ -7,6 +7,15 @@ Created on Wed Feb  3 11:26:45 2021
 
 import numpy as np
 from ..model import VelocityField
+from .. import data
+
+def load_random_gaussian_velocity_field(res):
+    '''Return an instance of RandomGaussianVelocityField wth the parameters
+    stored in/at res'''
+    res = data.load_or_pass_on(res)    
+    vf = RandomGaussianVelocityField(n_modes=res['n_modes'],u_rms=res['u_rms'],L_int=res['L_int'])
+    [setattr(vf,key,res[key]) for key in res]
+    return vf
 
 class RandomGaussianVelocityField(VelocityField):
     
@@ -30,14 +39,15 @@ class RandomGaussianVelocityField(VelocityField):
         
     def to_dict(self):
         d = {}
-        attrs = ['n_modes','u_rms','L_int','T_int','u_char','L_char','T_char',
-                 'b','c','k','omega]']
+        attrs = ['n_modes','u_rms','L_int',
+                 'T_int','u_char','L_char','T_char',
+                 'b','c','k','omega']
         for attr in attrs:
             d[attr] = getattr(self,attr)
         return d
     
     def save(self,fpath):
-        pass
+        data.save_obj(self.to_dict(),fpath)
         
     def get_velocity(self,t,x):
         b = self.b

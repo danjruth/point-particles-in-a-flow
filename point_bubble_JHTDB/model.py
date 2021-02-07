@@ -7,12 +7,10 @@ Created on Mon Jun 29 14:59:40 2020
 
 import numpy as np
 import pickle
-#import os.path
 from scipy.spatial.transform import Rotation
-#from . import analysis
+from . import data
 
 #data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
-data_dir = r'/home/idies/workspace/Temporary/danjruth/scratch//'
 
 '''
 Classes for the velocity field
@@ -67,6 +65,50 @@ class VelocityField:
         velgrad = self.get_velocity_gradient(t,XYZ)
         velgrad = np.reshape(velgrad,(np.shape(X)[0],np.shape(X)[1],3,3))
         return velgrad
+    
+    def calc_u_rms(self,n_t=10,t_lims=(0,1000),n_x=1000,x_lims=((0,0,0),(1000,1000,1000)),componentwise=False):
+        '''Sample velocities at random times and locations to get u_rms.
+        '''
+        
+        velocities = []
+        for _ in range(n_t):
+            x = np.random.uniform(low=x_lims[0],high=x_lims[1],size=(n_x,3))
+            vels = self.get_velocity(np.random.uniform(t_lims[0],t_lims[1]),x)
+            velocities.append(vels)
+        velocities=np.array(velocities)
+        if not componentwise:
+            return velocities.std()
+        else:
+            return velocities.std(axis=(1,0))
+        
+    def calc_mean_flow(self,n_t=10,t_lims=(0,1000),n_x=1000,x_lims=((0,0,0),(1000,1000,1000))):
+        velocities = []
+        for _ in range(n_t):
+            x = np.random.uniform(low=x_lims[0],high=x_lims[1],size=(n_x,3))
+            vels = self.get_velocity(np.random.uniform(t_lims[0],t_lims[1]),x)
+            velocities.append(vels)
+        velocities=np.array(velocities)
+        return np.mean(velocities,axis=(0,1))
+        
+    def get_velocity_gradient_numerical(self,t,x,delta_x=1e-4):
+        '''Calculate the velocity gradient numerically
+        '''
+        velgrad = np.zeros((len(x),3,3,))
+        # for the three directions in which to take the gradient
+        for j in range(3):
+            stencil = np.zeros((3))
+            stencil[j] = 1
+            vel_below = self.get_velocity(t,x-stencil*delta_x)
+            vel_above = self.get_velocity(t,x+stencil*delta_x)
+            velgrad[:,:,j] = (vel_above-vel_below)/(2*delta_x)
+        return velgrad
+    
+    def get_dudt_numerical(self,t,x,delta_t=1e-4):
+        '''Calculate the velocity gradient wrt time numerically
+        '''
+        vel_before = self.get_velocity(t-delta_t,x)
+        vel_after = self.get_velocity(t+delta_t,x)
+        return (vel_after-vel_before)/(2*delta_t)
         
 
 class FieldState:
@@ -106,6 +148,24 @@ class MaxeyRileyPointBubbleConstantCoefs(EquationOfMotion):
         bubble parameters stored in sim'''
         # (u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir)
         a = a_bubble_MR_constantcoefficients(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.Cd,sim.Cm,sim.Cl,sim.g,sim.g_dir)
+        return v+a*dt
+    
+class MaxeyRileyPointBubbleVariableCoefs(EquationOfMotion):
+    def __init__(self):
+        EquationOfMotion.__init__(self,name='MaxeyRiley_pointbubble_variablecoefficients')
+                
+    def __call__(self,v,fs,sim,dt):
+        '''calculate a new v based on the current v, the field state, and the
+        bubble parameters stored in sim'''
+        # (u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir)
+        
+        Re = np.linalg.norm(v-fs.u,axis=-1) * sim.d / sim.nu
+        Cd = calc_Cd_Snyder(Re)        
+        Cd_arr = np.ones((len(Cd),3))
+        Cd_arr = (Cd_arr.T*Cd).T
+        Cm = 0.5
+        Cl = 0
+        a = a_bubble_MR_constantcoefficients(fs.u,v,fs.velgrad,fs.dudt,sim.d,Cd_arr,Cm,Cl,sim.g,sim.g_dir)
         return v+a*dt
     
 class LagrangianEOM(EquationOfMotion):
@@ -205,11 +265,11 @@ class Simulation:
         fs = self.velocity_field.get_field_state(self.t[ti],self.x[ti,...])
 
         # next velocity and position, given current field state and velocity
-        v_new = self.eom(self.v[ti,...],fs,self,self.dt)
+        v_new = self.eom(self.v[ti,...],fs,self,self.dt) # based on everything at this point in time
         x_new = self.x[ti,...]+v_new*self.dt
 
         # store the data
-        self.u[ti+1,...] = fs.u.copy()
+        self.u[ti+1,...] = fs.u.copy() # assigning field state at t[ti] to ti+1?
         self.v[ti+1,...] = v_new.copy()
         self.x[ti+1,...] = x_new.copy()
         self.dudt[ti+1,...] = fs.dudt
@@ -239,17 +299,12 @@ class Simulation:
     def save(self,fpath):
         '''put the results into a dict and pickle it'''
         res = self.to_dict()
-        print('Saving data to '+fpath)
-        with open(fpath, 'wb') as handle:
-            pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        data.save_obj(res,fpath)
             
     def add_data_from_dict(self,res):
         
-        # if d is a filepath to the pickled dict, load the dict
-        if type(res)==str:
-            print('Loading data from '+res)
-            with open(res, 'rb') as handle:
-                res = pickle.load(handle)
+        # load the results if res is a filepath to them
+        res = data.load_or_pass_on(res)
         
         # set the dict entries as attributes
         [setattr(self,key,res[key]) for key in res]
@@ -316,8 +371,33 @@ def a_bubble_MR_constantcoefficients(u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir):
     
     return a
 
+def calc_Cd_Snyder(Re):
+    '''drag coefficient used in Snyder2007
+    '''
+    Re = np.atleast_1d(Re)
+    Cd = np.zeros_like(Re)
+    ix_low = np.argwhere(Re<1)
+    ix_med = np.argwhere((Re>=1)*(Re<20))
+    ix_high = np.argwhere(Re>=20)
+    Cd[ix_low] = 24/Re[ix_low]
+    Cd[ix_med] = (24./Re[ix_med]) * (1 + (3.6/Re[ix_med]**0.313)*((Re[ix_med]-1)/19)**2)
+    Cd[ix_high] = (24./Re[ix_high]) * (1 + 0.15*Re[ix_high]**0.687)
+    return Cd
+
 def quiescent_speed(d,g,Cd):
     return np.sqrt(4./3 * d * g /Cd)
+
+def bubble_params_given_nondim(Fr,dstar,u_vf,L_vf):
+    d = dstar * L_vf
+    g = u_vf**2 / (Fr**2*d)
+    return d,g
+
+def nu_given_Req(d,g,Cd_q,Re_q):
+    '''calculate viscosity given the quiescent parameters
+    '''
+    v_q = quiescent_speed(d,g,Cd_q)
+    nu = d*v_q / Re_q
+    return nu
 
 # class PointBubbleSimulation:
     
