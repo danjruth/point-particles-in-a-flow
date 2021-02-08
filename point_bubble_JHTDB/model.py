@@ -10,8 +10,6 @@ import pickle
 from scipy.spatial.transform import Rotation
 from . import data
 
-#data_dir = r'/home/idies/workspace/Storage/danjruth/persistent/point_bubble_data//'
-
 '''
 Classes for the velocity field
 '''
@@ -30,6 +28,12 @@ class VelocityField:
         self.L_char = np.nan
         pass
     
+    def init_field(self):
+        '''This can be redefined for derived classes which need to be
+        initialized.
+        '''
+        pass
+        
     '''
     Functions to get velocity, dudt, and velocity gradient, which should be
     overwritten in derived classes for specific velocity fields.
@@ -48,6 +52,26 @@ class VelocityField:
     '''
     Functions common to any derived class of VelocityField
     '''
+    
+    _save_vars = ['name','u_char','T_char','L_char']
+    def to_dict(self):
+        '''Put the attributes named in self._save_vars into a dict
+        '''
+        res = {attr:getattr(self,attr) for attr in self._save_vars}
+        return res
+    
+    def save(self,fpath,include_velfield_params=True):
+        '''put the results into a dict and pickle it
+        '''
+        res = self.to_dict()
+        data.save_obj(res,fpath)
+        
+    def load_field(self,res):
+        '''
+        Add velocity field data 
+        '''
+        res = data.load_or_pass_on(res)
+        [setattr(self,key,res[key]) for key in self._save_vars]
     
     def get_field_state(self,t,x):
         '''get the state of the field at a point in time at given locations
@@ -89,7 +113,53 @@ class VelocityField:
             velocities.append(vels)
         velocities=np.array(velocities)
         return np.mean(velocities,axis=(0,1))
+    
+    def calc_structure_function_x(self,delta_x_max=None,delta_x_min=1e-4,
+                                  n_x=101,n_y=101,
+                                  n_t=1000,t_lims=(0,1000),
+                                  x_lims=((0,0,0),(1000,1000,1000))):
+        '''Compute the structure function in the x direction
+        '''
+        if delta_x_max is None:
+            delta_x_max = 100*self.L_char
+        x = np.concatenate([[0],np.geomspace(delta_x_min,delta_x_max,n_x)])
+        y = np.linspace(0,x_lims[1][1])
+        X,Y = np.meshgrid(x,y)
+        Z = np.zeros_like(X)
+        mean_veldiffsqs = []
+        for t in np.random.uniform(t_lims[0],t_lims[1],n_t):
+            xyz_flat = np.array([X.flatten()+np.random.uniform(x_lims[0][0],x_lims[1][0]),Y.flatten()+np.random.uniform(x_lims[0][0],x_lims[1][0]),Z.flatten()+np.random.uniform(x_lims[0][2],x_lims[1][2])]).T
+            vel_flat = self.get_velocity(t,xyz_flat)
+            vel = np.reshape(vel_flat,(np.shape(X)[0],np.shape(X)[1],3))
+            veldiffsq = (vel[:,:,0].T - vel[:,0,0]).T**2
+            mean_veldiffsq = np.mean(veldiffsq,axis=0)
+            mean_veldiffsqs.append(mean_veldiffsq)
+        mean_veldiffsqs = np.mean(np.array(mean_veldiffsqs),axis=0)
+        return x, mean_veldiffsqs
+    
+    def calc_autocorrelation_x(self,delta_x_max=None,delta_x_min=1e-4,
+                                n_x=101,n_y=101,
+                                n_t=1000,t_lims=(0,1000),
+                                x_lims=((0,0,0),(1000,1000,1000))):
+        if delta_x_max is None:
+            delta_x_max = 100*self.L_char
+        x = np.concatenate([[0],np.geomspace(delta_x_min,delta_x_max,n_x)])
+        y = np.linspace(0,x_lims[1][1])
+        X,Y = np.meshgrid(x,y)
+        Z = np.zeros_like(X)
+        mean_prod_vels = []
+        for t in np.random.uniform(t_lims[0],t_lims[1],n_t):
+            xyz_flat = np.array([X.flatten()+np.random.uniform(x_lims[0][0],x_lims[1][0]),Y.flatten()+np.random.uniform(x_lims[0][0],x_lims[1][0]),Z.flatten()+np.random.uniform(x_lims[0][2],x_lims[1][2])]).T
+            vel_flat = self.get_velocity(t,xyz_flat)
+            vel = np.reshape(vel_flat,(np.shape(X)[0],np.shape(X)[1],3))
+            prod_vel = (vel[:,:,0].T * vel[:,0,0]).T
+            mean_prod_vel = np.mean(prod_vel,axis=0)
+            mean_prod_vels.append(mean_prod_vel)
+        mean_prod_vels = np.mean(np.array(mean_prod_vels),axis=0)
+        mean_prod_vels = mean_prod_vels / mean_prod_vels[0]
+        return x, mean_prod_vels
         
+    
     def get_velocity_gradient_numerical(self,t,x,delta_x=1e-4):
         '''Calculate the velocity gradient numerically
         '''
@@ -200,6 +270,11 @@ def assign_attributes(obj,bubble_params,sim_params):
 
 class Simulation:
     
+    _save_vars = ['bubble_params','sim_params','_save_vars',
+                  'g_dir',
+                  'x','v','u','dudt','velgrad',
+                  'ti']
+    
     def __init__(self,velocity_field,bubble_params,sim_params,eom):
         
         self.velocity_field = velocity_field
@@ -246,18 +321,7 @@ class Simulation:
         self.t = np.arange(self.t_min,self.t_max,self.dt)
         self.n_t = len(self.t)
         
-    def add_data(self,res):
-        '''
-        Add partially-complete simulation data stored in the dict res
-        '''
-        
-        self.x = res['x']
-        self.u = res['u']
-        self.v = res['v']
-        self.velgrad = res['velgrad']
-        self.dudt = res['dudt']
-        self.ti = res['ti']-1
-        self.g_dir = res['g_dir']
+    
         
     def _advance(self,ti):
         
@@ -279,6 +343,17 @@ class Simulation:
         for ti in np.arange(self.ti,self.n_t-1,1):
             self._advance(ti)
             self.ti = ti
+            
+    def add_data(self,res,include_velfield=False):
+        '''
+        Add partially-complete simulation data stored in the dict res
+        '''
+        res = data.load_or_pass_on(res)
+        [setattr(self,key,res[key]) for key in self._save_vars]
+        self.ti = max(self.ti-1,0)
+        self = assign_attributes(self,self.bubble_params,self.sim_params)
+        if include_velfield:
+            self.velocity_field.load_field(res['velfield_params'])
         
     def to_dict(self):
         '''Put the bubble parameters, simulation parameters, and results of 
@@ -286,31 +361,17 @@ class Simulation:
         and the equation of motion (since these classes can't be pickled
         reliably)
         '''
-        
-        save_vars = ['bubble_params','sim_params',
-                     'g_dir',
-                     'x','v','u','dudt','velgrad',
-                     'ti']
-        res = {attr:getattr(self,attr) for attr in save_vars}
+        res = {attr:getattr(self,attr) for attr in self._save_vars}
         res['velocity_field_name'] = self.velocity_field.name
         res['equation_of_motion_name'] = self.eom.name
         return res
     
-    def save(self,fpath):
+    def save(self,fpath,include_velfield_params=True):
         '''put the results into a dict and pickle it'''
         res = self.to_dict()
+        res['velfield_params'] = self.velocity_field.to_dict()
         data.save_obj(res,fpath)
-            
-    def add_data_from_dict(self,res):
         
-        # load the results if res is a filepath to them
-        res = data.load_or_pass_on(res)
-        
-        # set the dict entries as attributes
-        [setattr(self,key,res[key]) for key in res]
-        
-        # just to be safe, re-do the last timestep
-        self.ti = max(0,self.ti-1)
         
 '''
 Functions involved in the equations of motion

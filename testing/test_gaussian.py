@@ -12,6 +12,51 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import toolkit.parallel
 
+folder = r'E:\210204_new_pointbubble_data\\'
+vf = gaussian.RandomGaussianVelocityField(n_modes=12,u_rms=1,L_int=1)
+vf.init_field()
+mr = model.MaxeyRileyPointBubbleConstantCoefs()
+
+dstar = 0.1
+d,g = model.bubble_params_given_nondim(3, 0.1, 1, 1)
+bubble_params = {'d':d,
+                'g':g,
+                'Cm':0.5,
+                'Cd':1,
+                'Cl':0.0}
+
+sim_params = {'n_bubs':3,
+              'dt':1e-3,
+              't_min':0,
+              't_max':2,
+              'fname':'test'}
+
+sim = model.Simulation(vf,bubble_params,sim_params,mr)
+sim.init_sim()
+sim.save(folder+'test_sim.pkl',include_velfield_params=True)
+
+vf_unused = gaussian.RandomGaussianVelocityField(n_modes=12,u_rms=1,L_int=1)
+res = data.load_or_pass_on(folder+'test_sim.pkl')
+sim2 = model.Simulation(vf_unused,bubble_params,sim_params,mr)
+sim2.add_data(res,include_velfield=True)
+
+stophere
+
+
+# vf1 = gaussian.RandomGaussianVelocityField(n_modes=12,u_rms=1,L_int=1)
+# vf2 = gaussian.RandomGaussianVelocityField(n_modes=12,u_rms=0.2,L_int=5)
+# vf_combined = gaussian.combine_Gaussian_fields([vf1,vf2])
+# u_rms = vf_combined.calc_u_rms()
+
+# fig,ax = plt.subplots()
+# for vf,ls in zip([vf1,vf2,vf_combined],['--','--','-']):
+#     x,dll = vf.calc_structure_function_x(delta_x_min=1e-3,delta_x_max=100,n_t=100)
+#     ax.loglog(x,dll,ls=ls)
+#     #x,autocorr = vf.calc_autocorrelation_x(delta_x_min=1e-3,delta_x_max=100,n_t=100)
+#     #ax.loglog(x,autocorr,ls=ls)
+
+# stophere
+
 '''
 Construct the velocity field
 '''
@@ -105,7 +150,7 @@ mr = model.MaxeyRileyPointBubbleConstantCoefs()
 #mr = model.LagrangianEOM()
 
 #Fr_vec = np.concatenate([np.geomspace(0.01,2,5,endpoint=False),np.linspace(2,10,5)])
-Fr_vec = np.concatenate([np.geomspace(0.05,7,12),np.arange(4,12,1)])
+Fr_vec = np.concatenate([np.geomspace(0.1,7,12),np.arange(7,12,1)])
 n_fieldss =[18]*len(Fr_vec)
 css = []
 for Fr,n_fields in zip(Fr_vec,n_fieldss):
@@ -113,7 +158,7 @@ for Fr,n_fields in zip(Fr_vec,n_fieldss):
     cs = []
     
     def do_job(_):
-        vf = gaussian.RandomGaussianVelocityField(n_modes=12,u_rms=1,L_int=1)
+        vf = gaussian.RandomGaussianVelocityField(n_modes=24,u_rms=1,L_int=1)
         dstar = 0.1
         d,g = model.bubble_params_given_nondim(Fr, dstar, 1, 1)
         bubble_params = {'d':d,
@@ -125,21 +170,21 @@ for Fr,n_fields in zip(Fr_vec,n_fieldss):
         sim_params = {'n_bubs':300,
                       'dt':1e-3,
                       't_min':0,
-                      't_max':4,
+                      't_max':8,
                       'fname':'test'}
         
         sim = model.Simulation(vf,bubble_params,sim_params,mr)
-        sim.init_sim()
+        sim.init_sim(pos_lims=((0,0,0),(10000,10000,10000,)))
         sim.run()
         a = analysis.CompleteSim(sim,norm=False)
-        slip_fluc =  (a['v'][1000:]-a['v'][1000:].mean(axis=(0,1))) - (a['u'][1000:]-a['u'][1000:].mean(axis=(0,1)))
+        slip_fluc =  (a['v'][2000:]-a['v'][2000:].mean(axis=(0,1))) - (a['u'][2000:]-a['u'][2000:].mean(axis=(0,1)))
         slip_fluc_norm = np.linalg.norm(slip_fluc,axis=-1)
         mean_sfn = np.mean(slip_fluc_norm)
         plt.figure()
         plt.plot(a['t'],a['v'][:,0,:]/a.v_q)
         a.mean_sfn = mean_sfn
         
-        key_del = ['vort','dudt','u_times_deldotu','press','drag','lift','slip']
+        key_del = ['vort','dudt','u_times_deldotu','press','drag','lift','slip','x']
         for key in key_del:
             del a.r[key]
         return a
@@ -148,8 +193,8 @@ for Fr,n_fields in zip(Fr_vec,n_fieldss):
     css.append(cs)
         
 Frs = [cs[0].Fr for cs in css]
-nondim_speeds = [np.mean([c['v'][1000:,:,2].mean()/c.v_q for c in cs]) for cs in css]
-y_val = [np.mean([c['v'][1000:,:,2].mean() * c.mean_sfn / c.v_q**2 for c in cs]) for cs in css]
+nondim_speeds = [np.mean([c['v'][2000:,:,2].mean()/c.v_q for c in cs]) for cs in css]
+y_val = [np.mean([c['v'][2000:,:,2].mean() * c.mean_sfn / c.v_q**2 for c in cs]) for cs in css]
 
 fig,ax = plt.subplots()
 ax.semilogy(Frs,y_val,'x-')
@@ -162,8 +207,12 @@ ax.plot(Frs,nondim_sfns,'-x')
 ax.set_xlabel('$\mathrm{Fr}$')
 ax.set_ylabel(r'''$\langle |\vec{v}' - \vec{u}' | \rangle / u' $''')
 
-plt.figure()
-plt.loglog(Frs,nondim_speeds,'x-')
+fig,ax = plt.subplots()
+ax.loglog(Frs,nondim_speeds,'x-')
+const = 1.5
+x = np.geomspace(const,np.max(Frs),101)
+y = const/x
+ax.plot(x,y,'--')
 
 '''
 Variable drag coefficient
@@ -180,16 +229,17 @@ bubble_params = {'d':d,
                 'Cd':1,
                 'Cl':0.0}
 
-sim_params = {'n_bubs':600,
+sim_params = {'n_bubs':100,
               'dt':1e-3,
               't_min':0,
-              't_max':20,
+              't_max':1,
               'fname':'test'}
 
 # simulation with naive Cd = 1
 sim_const = model.Simulation(vf,bubble_params,sim_params,model.MaxeyRileyPointBubbleConstantCoefs())
-sim_const.init_sim(g_dir='z')
+sim_const.init_sim()
 sim_const.run()
+c_const = analysis.CompleteSim(sim_const)
 
 # simulation with variable Cd, where Cd=1 is achieved for the quiescent case
 sim_var = model.Simulation(vf,bubble_params,sim_params,model.MaxeyRileyPointBubbleVariableCoefs())
@@ -393,29 +443,66 @@ for i,ax in enumerate(axs):
 # ax.loglog(f,pxx)
 # plt.figure(); plt.plot(x,y)
 
-# integral length scale
-autocorrs = []
-x = np.linspace(0,0.6,801)
-y = np.linspace(0,1001,101)
-X,Y = np.meshgrid(x,y)
-Z = np.zeros_like(X)
-xyz_flat = np.array([X.flatten(),Y.flatten(),Z.flatten()]).T
-for t in np.random.uniform(0,10,100):
-    #vf = make_vf(n_modes=8,u_rms=0.2,L_int=0.01)
-    xyz_flat = np.array([X.flatten(),Y.flatten(),Z.flatten()]).T
-    vel_flat = vf.get_velocity(t,xyz_flat)
-    vel = np.reshape(vel_flat,(np.shape(X)[0],np.shape(X)[1],3))
-    autocorr = (vel[:,:,0].T * vel[:,0,0]).T
-    autocorr = np.mean(autocorr,axis=0)
-    autocorrs.append(autocorr)
-autocorrs = np.mean(np.array(autocorrs),axis=0)
-autocorr = autocorrs/autocorrs[0]
+n_mode_vec = [2,4,8,12,24,48]
+fig,axs = plt.subplots(1,2,figsize=(9,4))
+for n_modes in n_mode_vec:
+    #vf = make_vf(n_modes=n_modes,u_rms=1,L_int=1)
+    # integral length scale
+    autocorrs = []
+    
+    for t in np.random.uniform(0,1000,1000):
+        x = np.geomspace(1e-5,100,401) + np.random.uniform(0,1000)
+        y = np.linspace(0,2001,100) + np.random.uniform(0,1000)
+        X,Y = np.meshgrid(x,y)
+        Z = np.zeros_like(X) + np.random.uniform(0,1000)
+        xyz_flat = np.array([X.flatten(),Y.flatten(),Z.flatten()]).T
+        vf = gaussian.RandomGaussianVelocityField(n_modes=n_modes,u_rms=1,L_int=1)
+        xyz_flat = np.array([X.flatten(),Y.flatten(),Z.flatten()]).T
+        vel_flat = vf.get_velocity(t,xyz_flat)
+        vel = np.reshape(vel_flat,(np.shape(X)[0],np.shape(X)[1],3))
+        autocorr = (vel[:,:,0].T * vel[:,0,0]).T
+        autocorr = np.mean(autocorr,axis=0)
+        autocorrs.append(autocorr)
+    autocorrs = np.mean(np.array(autocorrs),axis=0)
+    autocorr = autocorrs/autocorrs[0]
+    x = x-x[0]
+    axs[0].loglog(x,1-autocorr,label=n_modes)
+    axs[1].semilogx(x,analysis.get_powerlaw(x,1-autocorr,roll_window=4),label=n_modes)
+axs[0].legend()
+axs[1].set_ylim(0.5,2.5)
+axs[1].set_xlim(x.min(),5)
 
-plt.figure()
-plt.plot(x,autocorr)
+#plt.figure()
+    
 
 plt.figure()
 plt.plot(x,np.cumsum(autocorr*np.gradient(x)))
+
+# structure function
+x = np.geomspace(1e-6,100,401)
+y = np.linspace(0,101,101)
+X,Y = np.meshgrid(x,y)
+Z = np.zeros_like(X)
+xyz_flat = np.array([X.flatten(),Y.flatten(),Z.flatten()]).T
+n_mode_vec = [2,4,12,48]
+fig,ax = plt.subplots()
+for n_modes in n_mode_vec:
+    mean_veldiffsqs = []
+    for t in np.random.uniform(0,1000,100):
+        vf = gaussian.RandomGaussianVelocityField(n_modes=n_modes,u_rms=1,L_int=1)
+        xyz_flat = np.array([X.flatten()+np.random.uniform(0,1000),Y.flatten()+np.random.uniform(0,1000),Z.flatten()+np.random.uniform(0,1000)]).T
+        vel_flat = vf.get_velocity(t,xyz_flat)
+        vel = np.reshape(vel_flat,(np.shape(X)[0],np.shape(X)[1],3))
+        veldiffsq = (vel[:,:,0].T - vel[:,0,0]).T**2
+        mean_veldiffsq = np.mean(veldiffsq,axis=0)
+        mean_veldiffsqs.append(mean_veldiffsq)
+    mean_veldiffsqs = np.mean(np.array(mean_veldiffsqs),axis=0)
+    #fig,ax = plt.subplots()
+    deltax = x-x[0]
+    ax.loglog(deltax[1:],mean_veldiffsqs[1:])
+x = np.geomspace(1e-5,2)
+y = x**2
+ax.plot(x,y,'--',color='k',label=n_modes)
     
 # image of the velocity gradient
 x = np.linspace(0,0.2,201)

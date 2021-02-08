@@ -38,7 +38,22 @@ class CompleteSim():
         # get the forces and rotate everything so z is aligned with gravity for each bubble
         self._forces_and_rotation(sim)
         
+        # minimum index from which to return the data through __call__
+        self.ti_min = 0
+        
+    def set_min_valid_time(self,n,units='T_vf'):
+        '''Set the index beyond which to return data, corresponding to n*units
+        '''
+        unit_durs = {'T_vf':self.T_vf,
+                     'data':1,
+                     'vq_by_g':self.v_q/self.g,
+                     'u_vf_by_g':self.u_vf/self.g}
+        self.ti_min = int(round(n*unit_durs[units]))
+        
     def _forces_and_rotation(self,sim):
+        '''Compute the forces acting on the particle, and rotate all vectors to
+        the gravity-aligned coordinate system
+        '''
         
         # slip, vorticity, and bubble volume
         slip = sim.v[:-1] - sim.u[1:]
@@ -94,7 +109,7 @@ class CompleteSim():
                      self.T_vf:['t'],
                      self.grav_z:['press','drag','lift']}
         
-        arr = self.r[f]
+        arr = self.r[f][self.ti_min:,...]
         if self.norm:
             for key in char_vals:
                 if f in char_vals[key]:
@@ -102,25 +117,6 @@ class CompleteSim():
         else:   
             return arr
 
-
-def get_hist(y,bins=1001):
-    '''return a normalized pdf and x locs of bin centers'''
-    hist,edges = np.histogram(y[~np.isnan(y)],bins=bins,density=True)
-    return edges[:-1]+np.diff(edges)/2, hist
-
-# def get_rot_dirs(g_dir):
-#     '''get vectors denoting the new x,y,z directions wrt the DNS coordinate system'''
-    
-#     # z is in the direction of gravity
-#     z_dir = g_dir.copy()
-    
-#     # x direction has to be normal to z, and we arbitrarily choose it's also normal to the DNS x
-#     x_dir_unscaled = np.cross(z_dir,[1,0,0])
-#     x_dir = x_dir_unscaled / np.linalg.norm(x_dir_unscaled)
-    
-#     # get the y direction
-#     y_dir = np.cross(z_dir,x_dir)
-    
 
 def rot_coord_system(arr,g_dir):
     '''
@@ -134,9 +130,9 @@ def rot_coord_system(arr,g_dir):
     x_dir_unscaled = np.cross(z_dir,[1,0,0])
     x_dir = x_dir_unscaled / np.linalg.norm(x_dir_unscaled)
     
-    # get the y direction
+    # get the y direction, has magnitude 1 since z and x are perpendicular each with magnitude 1
     y_dir = np.cross(z_dir,x_dir)
-    
+        
     arr_rot = np.array([np.dot(arr,x_dir),np.dot(arr,y_dir),np.dot(arr,z_dir)]).T
 
     return arr_rot
@@ -157,94 +153,6 @@ def rot_all(arrs,g_dirs,actually_rot=True):
     else:
         return arrs
 
-def load_case(d,n_T_int=2,rot=True,only_nonzero_mean_rise=False):
-    
-    if isinstance(d,str):
-        with open(d, 'rb') as handle:
-            res = pickle.load(handle)
-    else:
-        res = d
-        
-    res['Fr'] = model.u_rms / np.sqrt(res['g']*model.L_int)
-        
-    # calculate the forces, in DNS coords initially
-    slip = res['v'][:-1] - res['u'][1:]
-    vort = get_vorticity(res['velgrad'])
-    vol = (res['d']/2.)**3 * 4./3 * np.pi
-    
-    # gravity force
-    grav_z = res['g'] * vol
-    
-    press = []
-    drag = []
-    lift = []
-    u_times_deldotu_all = []
-    for i in [0,1,2]:
-        
-        u_times_deldotu = np.sum(res['velgrad'][1:,:,i,:]*res['u'][1:],axis=-1)
-        u_times_deldotu_all.append(u_times_deldotu)
-        press.append((1+res['Cm'])* vol * (res['dudt'][1:,:,i] + u_times_deldotu))        
-        drag.append(-1*res['Cd'] * 0.5 * np.pi * (res['d']/2)**2 * slip[...,i] * np.linalg.norm(slip[:,...],axis=-1))        
-        lift.append(-1 * res['Cl'] * np.cross(slip,vort[1:])[...,i] * vol)
-        
-    # make each arrays, and rotate
-    press = np.moveaxis(np.array(press),0,-1)
-    drag = np.moveaxis(np.array(drag),0,-1)
-    lift = np.moveaxis(np.array(lift),0,-1)
-    res['press'] = rot_all(press,res['g_dir'],actually_rot=rot)
-    res['drag'] = rot_all(drag,res['g_dir'],actually_rot=rot)
-    res['lift'] = rot_all(lift,res['g_dir'],actually_rot=rot)
-    res['grav_z'] = grav_z
-        
-    # rotate the velocities and position
-    res['v'] = rot_all(res['v'],res['g_dir'],actually_rot=rot)
-    res['u'] = rot_all(res['u'],res['g_dir'],actually_rot=rot)
-    res['x'] = rot_all(res['x'],res['g_dir'],actually_rot=rot)
-    res['slip'] = rot_all(slip,res['g_dir'],actually_rot=rot)
-    res['vort'] = rot_all(vort,res['g_dir'],actually_rot=rot)
-    res['dudt'] = rot_all(res['dudt'][1:],res['g_dir'],actually_rot=rot)
-    u_times_deldotu = np.moveaxis(np.array(u_times_deldotu_all),0,-1)
-    res['u_times_deldotu'] = rot_all(u_times_deldotu,res['g_dir'],actually_rot=rot)
-    
-    # drop the velgrad since it hasn't been rotated
-    del res['velgrad']
-    
-    # see which points to consider (after initial transient)
-    res['cond'] = res['t']>model.T_int*n_T_int
-    if only_nonzero_mean_rise:
-        mean_rise = np.mean(res['v'][:,:,2],axis=1)
-        res['cond'] = res['cond'] * (mean_rise!=0)
-    
-    # get rid of the final point in time, so everything has the same length (slip already is the right length)
-    for var in ['v','u','x','vort','t','cond']:
-        res[var] = res[var][:-1]
-    
-    return res
-
-def concat_cases(list_of_dicts, fpath_save=None):
-    
-    # start with making a copy of the first dict
-    res = list_of_dicts[0].copy()
-    
-    # sum the total number of bubbles
-    res['n_bubs'] = np.sum([d['n_bubs'] for d in list_of_dicts])
-    
-    # no time axis for g_dir, so concat along the 0th axis
-    res['g_dir'] = np.concatenate([d['g_dir'] for d in list_of_dicts],axis=0)
-    
-    # bubble axis is 1 for the rest of the variables to concatenate
-    keys_to_concat = ['x','v','u','dudt','velgrad']
-    for key in keys_to_concat:
-        res[key] = np.concatenate([d[key] for d in list_of_dicts],axis=1)
-        
-    if fpath_save is not None:
-        print('Saving data to '+fpath_save)
-        with open(fpath_save, 'wb') as handle:
-            pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        
-    return res
-        
-
 def get_vorticity(velgrad):
     # similar to the function in model.py
     velgrad_shape = np.shape(velgrad)
@@ -259,6 +167,10 @@ def get_curvature(vel,t):
     accel = (np.gradient(vel,axis=0).T/np.gradient(t)).T
     curvature = np.linalg.norm(np.cross(vel,accel),axis=-1) / np.linalg.norm(vel,axis=-1)**3
     return curvature
+
+'''
+Helper functions for analysis
+'''
 
 def get_powerlaw(x,y,roll_window=1):
     powerlaw = np.gradient(np.log(y))/np.gradient(np.log(x))
@@ -278,3 +190,7 @@ def get_minmax_series(df,varx,vary):
         
     return x,low,high
     
+def get_hist(y,bins=1001):
+    '''return a normalized pdf and x locs of bin centers'''
+    hist,edges = np.histogram(y[~np.isnan(y)],bins=bins,density=True)
+    return edges[:-1]+np.diff(edges)/2, hist
