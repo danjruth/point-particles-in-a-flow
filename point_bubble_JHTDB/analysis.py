@@ -169,7 +169,7 @@ def get_curvature(vel,t):
     return curvature
 
 '''
-Helper functions for analysis
+Functions for analysis/setting up simulations
 '''
 
 def get_powerlaw(x,y,roll_window=1):
@@ -196,6 +196,8 @@ def get_hist(y,bins=1001):
     return edges[:-1]+np.diff(edges)/2, hist
 
 def quiescent_speed(d,g,Cd):
+    '''quiescent speed with constant Cd
+    '''
     return np.sqrt(4./3 * d * g /Cd)
 
 def quiescent_speed_visc(d,g,nu):
@@ -203,7 +205,9 @@ def quiescent_speed_visc(d,g,nu):
     '''
     return 1./18 * d**2 * g / nu
 
-def phys_params_given_nondim(Fr,dstar,u_vf,L_vf):
+def dg_given_nondim(Fr,dstar,u_vf,L_vf):
+    '''calculate d and g given Fr and dstar
+    '''
     d = dstar * L_vf
     g = u_vf**2 / (Fr**2*d)
     return d,g

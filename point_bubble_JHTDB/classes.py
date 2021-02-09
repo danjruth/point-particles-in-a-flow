@@ -197,6 +197,14 @@ class FieldState:
 '''
 Class for the equation of motion
 '''
+
+class Force:
+    
+    def __init__(self,name='no_force'):
+        self.name = name
+    
+    def __call__(self,p):
+        return np.zeros_like
         
 class EquationOfMotion:
     '''the __call__ method returns the new particle velocities, given their
@@ -228,6 +236,10 @@ def assign_attributes(obj,phys_params,sim_params):
     # set the inertial quiescent speed, if appropriate
     if all(x in list(phys_params.keys()) for x in ['d','g','Cd']):
         obj.v_q = analysis.quiescent_speed(obj.d,obj.g,obj.Cd)
+        
+    # set the viscous quiescent speed, if appropriate
+    if all(x in list(phys_params.keys()) for x in ['d','g','nu']):
+        obj.v_q = analysis.quiescent_speed_visc(obj.d,obj.g,obj.Cd)
     
     # extract simulation parameters
     for key in sim_params:
