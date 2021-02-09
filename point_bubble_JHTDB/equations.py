@@ -61,31 +61,31 @@ class MaxeyRileyPointBubbleConstantCoefsVisc(EquationOfMotion):
 #         a = a_bubble_MR_constantcoefficients_visc(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.nu,sim.Cm,sim.Cl,sim.g,sim.g_dir)
 #         return v+a*dt
     
-class MaxeyRileyPointBubbleVariableCoefs(EquationOfMotion):
-    '''Maxey-Riley equation for a bubble in a much denser liquid, with constant
-    lift and added-mass coefficients and variable drag, as used in Snyder2007
-    '''
-    def __init__(self):
-        super().__init__(self,name='MaxeyRiley_pointbubble_variablecoefficients')
+# class MaxeyRileyPointBubbleVariableCoefs(EquationOfMotion):
+#     '''Maxey-Riley equation for a bubble in a much denser liquid, with constant
+#     lift and added-mass coefficients and variable drag, as used in Snyder2007
+#     '''
+#     def __init__(self):
+#         super().__init__(self,name='MaxeyRiley_pointbubble_variablecoefficients')
                 
-    def __call__(self,v,fs,sim,dt):
-        Re = np.linalg.norm(v-fs.u,axis=-1) * sim.d / sim.nu
-        Cd = calc_Cd_Snyder(Re)        
-        Cd_arr = np.ones((len(Cd),3))
-        Cd_arr = (Cd_arr.T*Cd).T
-        Cm = 0.5
-        Cl = 0
-        a = a_bubble_MR_constantcoefficients(fs.u,v,fs.velgrad,fs.dudt,sim.d,Cd_arr,Cm,Cl,sim.g,sim.g_dir)
-        return v+a*dt
+#     def __call__(self,v,fs,sim,dt):
+#         Re = np.linalg.norm(v-fs.u,axis=-1) * sim.d / sim.nu
+#         Cd = calc_Cd_Snyder(Re)        
+#         Cd_arr = np.ones((len(Cd),3))
+#         Cd_arr = (Cd_arr.T*Cd).T
+#         Cm = 0.5
+#         Cl = 0
+#         a = a_bubble_MR_constantcoefficients(fs.u,v,fs.velgrad,fs.dudt,sim.d,Cd_arr,Cm,Cl,sim.g,sim.g_dir)
+#         return v+a*dt
     
 class LagrangianEOM(EquationOfMotion):
     def __init__(self):
-        super().__init__(self,name='Lagrangian')
+        super().__init__(name='Lagrangian')
         
-    def __call__(self,v,fs,sim,dt):
+    def __call__(self,p,dt):
         '''return the fluid velocity at the particle locations
         '''
-        return fs.u
+        return p['u']
     
 '''
 Functions used in the equations of motion
