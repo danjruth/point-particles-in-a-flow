@@ -5,7 +5,7 @@ Created on Tue Feb  2 11:49:32 2021
 @author: druth
 """
 
-from point_bubble_JHTDB import model, analysis, data
+from point_bubble_JHTDB import model, analysis
 from point_bubble_JHTDB.velocity_fields import gaussian
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,32 +13,63 @@ import pandas as pd
 import toolkit.parallel
 
 folder = r'E:\210204_new_pointbubble_data\\'
+
+# create the velocity field
 vf = gaussian.RandomGaussianVelocityField(n_modes=12,u_rms=1,L_int=1)
 vf.init_field()
+
+# create the equation of motion
 mr = model.MaxeyRileyPointBubbleConstantCoefs()
 
-dstar = 0.1
-d,g = model.bubble_params_given_nondim(3, 0.1, 1, 1)
-bubble_params = {'d':d,
-                'g':g,
+# define parameters for the bubbles simulated
+bubble_params = {'d':0.1,
+                'g':2,
                 'Cm':0.5,
                 'Cd':1,
                 'Cl':0.0}
-
-sim_params = {'n_bubs':3,
+sim_params = {'n_bubs':20,
               'dt':1e-3,
               't_min':0,
               't_max':2,
-              'fname':'test'}
-
+              'fname':'example_simulation'}
+              
+# create the simulation
 sim = model.Simulation(vf,bubble_params,sim_params,mr)
-sim.init_sim()
-sim.save(folder+'test_sim.pkl',include_velfield_params=True)
 
-vf_unused = gaussian.RandomGaussianVelocityField(n_modes=12,u_rms=1,L_int=1)
-res = data.load_or_pass_on(folder+'test_sim.pkl')
-sim2 = model.Simulation(vf_unused,bubble_params,sim_params,mr)
-sim2.add_data(res,include_velfield=True)
+# initialize it (involves choosing the 20 bubbles' initial positions and defining each's gravity direction)
+sim.init_sim()
+
+# simulate the bubbles between the t_min and t_max specified in sim_params
+sim.run()
+
+# save the data to a file
+sim.save(folder+'example_simulation.pkl')
+
+# create a CompleteSim object to analyze the results
+# this rotates all vectors so the final entry of the last axis is parallel to gravity
+csim = analysis.CompleteSim(sim)
+
+# plot the mean vertical velocity of the bubbles against time
+# normalize time by the characteristic scale of the velocity field
+# normalize velocities by the quiescent velocity of the bubble
+fig,ax = plt.subplots()
+ax.plot(csim['t']/csim.T_vf,np.mean(csim['v'][:,:,2],axis=1))
+ax.set_xlabel(r'$t/T_\mathrm{velocityfield}$')
+ax.set_ylabel(r'$\langle v_z \rangle / v_\mathrm{q}$')
+
+# initialize the object with a stand-in velocity field of the same type that is to be loaded
+# the EOM must be specified again (it can't be saved easily), but the parameters aren't necessary
+sim_reloaded = model.Simulation(gaussian.RandomGaussianVelocityField(),{},{},mr)
+
+# add the data that was saved
+sim_reloaded.add_data(folder+'example_simulation.pkl',include_velfield=True)
+sim_reloaded.ti = 1500
+sim_reloaded.run()
+csim2 = analysis.CompleteSim(sim_reloaded)
+ax.plot(csim2['t']/csim2.T_vf,np.mean(csim2['v'][:,:,2],axis=1))
+
+
+# sim_reloaded.run() can be called to restart the simulation if it wasn't complete upon saving
 
 stophere
 

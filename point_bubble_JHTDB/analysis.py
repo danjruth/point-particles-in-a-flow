@@ -19,10 +19,10 @@ class CompleteSim():
         
         # copy parameters from the Simulation
         self.velocity_field = sim.velocity_field
-        self.bubble_params = sim.bubble_params
+        self.phys_params = sim.phys_params
         self.sim_params = sim.sim_params
         self.eom = sim.eom
-        self = model.assign_attributes(self,self.bubble_params,self.sim_params)
+        self = model.assign_attributes(self,self.phys_params,self.sim_params)
         
         # characteristic scales of the velocity field
         self.u_vf = sim.velocity_field.u_char
