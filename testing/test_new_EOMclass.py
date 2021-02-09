@@ -28,24 +28,29 @@ phys_params = {'d':d,
 sim_params = {'n_bubs':5,
               'dt':1e-3,
               't_min':0,
-              't_max':0.2,
+              't_max':0.5,
               'fname':'inertial'}
-mr2 = equations.MaxeyRileyPointBubbleConstantCoefs2()
+mr2 = equations.MaxeyRileyPointBubbleConstantCoefs()
 sim = pb.Simulation(vf,phys_params,sim_params,mr2)
 sim.init_sim(g_dir='random')
 t1 = time.time()
 sim.run()
 print(time.time()-t1)
 
-mr = equations.MaxeyRileyPointBubbleConstantCoefs()
-simold = pb.Simulation(vf,phys_params,sim_params,mr)
-simold.init_sim(g_dir='random')
-simold.x[0,...] = sim.x[0,...].copy()
-simold.g_dir = sim.g_dir.copy()
+phys_params = {'d':d,
+                'g':g,
+                'Cm':0.5,
+                'nu':analysis.nu_given_quiescent_visc(d,g,sim.v_q),
+                'Cl':0.0}
+mr = equations.MaxeyRileyPointBubbleConstantCoefsVisc()
+sim2 = pb.Simulation(vf,phys_params,sim_params,mr)
+sim2.init_sim(g_dir='random')
+sim2.x[0,...] = sim.x[0,...].copy()
+sim2.g_dir = sim.g_dir.copy()
 t1 = time.time()
-simold.run()
+sim2.run()
 print(time.time()-t1)
 
 fig,ax = plt.subplots()
 ax.plot(sim.t,sim.x[:,0,:],ls='-')
-ax.plot(simold.t,simold.x[:,0,:],ls='--')
+ax.plot(sim2.t,sim2.x[:,0,:],ls='--')

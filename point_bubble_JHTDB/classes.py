@@ -217,6 +217,7 @@ class EquationOfMotion:
         self.forces = forces
         c = [f.const_params for f in self.forces]
         self.const_params = list({x for l in c for x in l})
+        self.force_names = [f.name for f in self.forces]
     
     def calc_m_eff(self,p):
         return np.nan
@@ -253,7 +254,7 @@ def assign_attributes(obj,phys_params,sim_params):
         
     # set the viscous quiescent speed, if appropriate
     if all(x in list(phys_params.keys()) for x in ['d','g','nu']):
-        obj.v_q = analysis.quiescent_speed_visc(obj.d,obj.g,obj.Cd)
+        obj.v_q = analysis.quiescent_speed_visc(obj.d,obj.g,obj.nu)
     
     # extract simulation parameters
     for key in sim_params:

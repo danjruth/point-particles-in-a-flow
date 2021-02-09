@@ -17,22 +17,11 @@ class MaxeyRileyPointBubbleConstantCoefs(EquationOfMotion):
     lift, drag, and added-mass coefficients
     '''
     def __init__(self):
-        super().__init__(name='MaxeyRiley_pointbubble_constantcoefficients')
-        
-    def __call__(self,v,fs,sim,dt):
-        a = a_bubble_MR_constantcoefficients(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.Cd,sim.Cm,sim.Cl,sim.g,sim.g_dir)
-        return v+a*dt
-    
-    
-    
-    
-class MaxeyRileyPointBubbleConstantCoefs2(EquationOfMotion):
-    '''Maxey-Riley equation for a bubble in a much denser liquid, with constant
-    lift, drag, and added-mass coefficients
-    '''
-    def __init__(self):
         super().__init__(name='MaxeyRiley_pointbubble_constantcoefficients',
-                         forces=[PressureForceBubble(),GravForceBubble(),ConstantCDDragForce(),ConstantCLLiftForce()])
+                         forces=[PressureForceBubble(),
+                                 GravForceBubble(),
+                                 ConstantCDDragForce(),
+                                 ConstantCLLiftForce()])
         
     def calc_m_eff(self,p):
         return p['Cm']*(p['d']/2)**3*4./3*np.pi
@@ -41,20 +30,36 @@ class MaxeyRileyPointBubbleConstantCoefs2(EquationOfMotion):
         p['vort'] = get_vorticity(p['velgrad'])
         return p
     
-    
-    
 class MaxeyRileyPointBubbleConstantCoefsVisc(EquationOfMotion):
     '''Maxey-Riley equation for a bubble in a much denser liquid, with constant
-    lift and added-mass coefficients and linear drag set by C_D = 24/Re
+    lift, drag, and added-mass coefficients
     '''
     def __init__(self):
-        super().__init__(name='MaxeyRiley_pointbubble_constantcoefficients_viscous')
+        super().__init__(name='MaxeyRiley_pointbubble_constantcoefficients',
+                         forces=[PressureForceBubble(),
+                                 GravForceBubble(),
+                                 ViscousDragForce(),
+                                 ConstantCLLiftForce()])
         
-    def __call__(self,v,fs,sim,dt):
-        '''calculate a new v based on the current v, the field state, and the
-        bubble parameters stored in sim'''
-        a = a_bubble_MR_constantcoefficients_visc(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.nu,sim.Cm,sim.Cl,sim.g,sim.g_dir)
-        return v+a*dt
+    def calc_m_eff(self,p):
+        return p['Cm']*(p['d']/2)**3*4./3*np.pi
+        
+    def _pre_calculations(self,p):
+        p['vort'] = get_vorticity(p['velgrad'])
+        return p
+    
+# class MaxeyRileyPointBubbleConstantCoefsVisc(EquationOfMotion):
+#     '''Maxey-Riley equation for a bubble in a much denser liquid, with constant
+#     lift and added-mass coefficients and linear drag set by C_D = 24/Re
+#     '''
+#     def __init__(self):
+#         super().__init__(name='MaxeyRiley_pointbubble_constantcoefficients_viscous')
+        
+#     def __call__(self,v,fs,sim,dt):
+#         '''calculate a new v based on the current v, the field state, and the
+#         bubble parameters stored in sim'''
+#         a = a_bubble_MR_constantcoefficients_visc(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.nu,sim.Cm,sim.Cl,sim.g,sim.g_dir)
+#         return v+a*dt
     
 class MaxeyRileyPointBubbleVariableCoefs(EquationOfMotion):
     '''Maxey-Riley equation for a bubble in a much denser liquid, with constant
@@ -132,7 +137,7 @@ def calc_grav_force(g,d,g_dir):
 
 class ConstantCDDragForce(Force):    
     def __init__(self):
-        super().__init__(name='grav_bubble')
+        super().__init__(name='constant_CD_drag')
         self.const_params = ['d','Cd']
     def __call__(self,p):
         Cd = p['Cd']
@@ -143,6 +148,20 @@ class ConstantCDDragForce(Force):
 def calc_drag_force(slip,d,Cd):
     drag = -1/8 * Cd * np.pi * d**2 * (slip.T*np.linalg.norm(slip,axis=-1)).T
     return drag
+
+class ViscousDragForce(Force):    
+    def __init__(self):
+        super().__init__(name='viscous_drag')
+        self.const_params = ['d','nu']
+    def __call__(self,p):
+        nu = p['nu']
+        d = p['d']
+        slip = p['slip']
+        slip_norm = np.linalg.norm(slip,axis=-1)
+        Re = slip_norm * d / nu
+        Cd = 24./Re
+        Cd = np.array([Cd]*3).T
+        return calc_drag_force(slip,d,Cd)
 
 def calc_drag_force_visc(slip,d,nu):
     slip_norm = np.linalg.norm(slip,axis=-1)
