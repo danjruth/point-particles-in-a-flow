@@ -6,7 +6,7 @@ Created on Mon Jun 29 16:50:22 2020
 """
 
 import numpy as np
-from ..model import VelocityField
+from ..classes import VelocityField
 
 try:
     from pyJHTDB import libJHTDB

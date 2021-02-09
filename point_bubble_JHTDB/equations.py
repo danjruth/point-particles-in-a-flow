@@ -6,26 +6,29 @@ Created on Tue Feb  9 15:11:13 2021
 """
 
 import numpy as np
-from .model import EquationOfMotion
+from . import EquationOfMotion
 
 '''
 Classes for equations of motion
 '''
  
 class MaxeyRileyPointBubbleConstantCoefs(EquationOfMotion):
+    '''Maxey-Riley equation for a bubble in a much denser liquid, with constant
+    lift, drag, and added-mass coefficients
+    '''
     def __init__(self):
-        EquationOfMotion.__init__(self,name='MaxeyRiley_pointbubble_constantcoefficients')
+        super().__init__(self,name='MaxeyRiley_pointbubble_constantcoefficients')
         
     def __call__(self,v,fs,sim,dt):
-        '''calculate a new v based on the current v, the field state, and the
-        bubble parameters stored in sim'''
-        # (u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir)
         a = a_bubble_MR_constantcoefficients(fs.u,v,fs.velgrad,fs.dudt,sim.d,sim.Cd,sim.Cm,sim.Cl,sim.g,sim.g_dir)
         return v+a*dt
     
 class MaxeyRileyPointBubbleConstantCoefsVisc(EquationOfMotion):
+    '''Maxey-Riley equation for a bubble in a much denser liquid, with constant
+    lift and added-mass coefficients and linear drag set by C_D = 24/Re
+    '''
     def __init__(self):
-        EquationOfMotion.__init__(self,name='MaxeyRiley_pointbubble_constantcoefficients_viscous')
+        super().__init__(self,name='MaxeyRiley_pointbubble_constantcoefficients_viscous')
         
     def __call__(self,v,fs,sim,dt):
         '''calculate a new v based on the current v, the field state, and the
@@ -34,14 +37,13 @@ class MaxeyRileyPointBubbleConstantCoefsVisc(EquationOfMotion):
         return v+a*dt
     
 class MaxeyRileyPointBubbleVariableCoefs(EquationOfMotion):
+    '''Maxey-Riley equation for a bubble in a much denser liquid, with constant
+    lift and added-mass coefficients and variable drag, as used in Snyder2007
+    '''
     def __init__(self):
-        EquationOfMotion.__init__(self,name='MaxeyRiley_pointbubble_variablecoefficients')
+        super().__init__(self,name='MaxeyRiley_pointbubble_variablecoefficients')
                 
     def __call__(self,v,fs,sim,dt):
-        '''calculate a new v based on the current v, the field state, and the
-        bubble parameters stored in sim'''
-        # (u,v,velgrad,dudt,d,Cd,Cm,Cl,g,g_dir)
-        
         Re = np.linalg.norm(v-fs.u,axis=-1) * sim.d / sim.nu
         Cd = calc_Cd_Snyder(Re)        
         Cd_arr = np.ones((len(Cd),3))
@@ -53,7 +55,7 @@ class MaxeyRileyPointBubbleVariableCoefs(EquationOfMotion):
     
 class LagrangianEOM(EquationOfMotion):
     def __init__(self):
-        EquationOfMotion.__init__(self,name='Lagrangian')
+        super().__init__(self,name='Lagrangian')
         
     def __call__(self,v,fs,sim,dt):
         '''return the fluid velocity at the particle locations
@@ -165,32 +167,3 @@ def calc_Cd_Snyder(Re):
     Cd[ix_med] = (24./Re[ix_med]) * (1 + (3.6/Re[ix_med]**0.313)*((Re[ix_med]-1)/19)**2)
     Cd[ix_high] = (24./Re[ix_high]) * (1 + 0.15*Re[ix_high]**0.687)
     return Cd
-
-'''
-Other equations used for analysis/setup
-'''
-
-def quiescent_speed(d,g,Cd):
-    return np.sqrt(4./3 * d * g /Cd)
-
-def quiescent_speed_visc(d,g,nu):
-    '''using Cd=24/Re
-    '''
-    return 1./18 * d**2 * g / nu
-
-def phys_params_given_nondim(Fr,dstar,u_vf,L_vf):
-    d = dstar * L_vf
-    g = u_vf**2 / (Fr**2*d)
-    return d,g
-
-def nu_given_Req(d,g,Cd_q,Re_q):
-    '''calculate viscosity given the quiescent parameters
-    '''
-    v_q = quiescent_speed(d,g,Cd_q)
-    nu = d*v_q / Re_q
-    return nu
-
-def nu_given_quiescent_visc(d,g,v_q):
-    '''calulate the new which yields v_q given d and g, assuming C_D = 24/Re
-    '''
-    return 1./18 * d**2 * g / v_q

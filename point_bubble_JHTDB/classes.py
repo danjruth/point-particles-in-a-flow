@@ -8,7 +8,8 @@ Created on Mon Jun 29 14:59:40 2020
 import numpy as np
 import pickle
 from scipy.spatial.transform import Rotation
-from . import data, equations
+from . import data, analysis
+#from .equations import quiescent_speed
 
 '''
 Classes for the velocity field
@@ -226,7 +227,7 @@ def assign_attributes(obj,phys_params,sim_params):
     
     # set the inertial quiescent speed, if appropriate
     if all(x in list(phys_params.keys()) for x in ['d','g','Cd']):
-        obj.v_q = equations.quiescent_speed(obj.d,obj.g,obj.Cd)
+        obj.v_q = analysis.quiescent_speed(obj.d,obj.g,obj.Cd)
     
     # extract simulation parameters
     for key in sim_params:

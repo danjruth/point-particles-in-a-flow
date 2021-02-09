@@ -7,7 +7,7 @@ Created on Sun Jul 19 11:55:39 2020
 
 import numpy as np
 import pickle
-from . import model
+from . import classes
 import pandas as pd
 
 class CompleteSim():
@@ -22,7 +22,7 @@ class CompleteSim():
         self.phys_params = sim.phys_params
         self.sim_params = sim.sim_params
         self.eom = sim.eom
-        self = model.assign_attributes(self,self.phys_params,self.sim_params)
+        self = classes.assign_attributes(self,self.phys_params,self.sim_params)
         
         # characteristic scales of the velocity field
         self.u_vf = sim.velocity_field.u_char
@@ -154,7 +154,7 @@ def rot_all(arrs,g_dirs,actually_rot=True):
         return arrs
 
 def get_vorticity(velgrad):
-    # similar to the function in model.py
+    # similar to the function in equations.py
     velgrad_shape = np.shape(velgrad)
     vort_shape = velgrad_shape[:-1]
     vort = np.zeros(vort_shape)
@@ -194,3 +194,28 @@ def get_hist(y,bins=1001):
     '''return a normalized pdf and x locs of bin centers'''
     hist,edges = np.histogram(y[~np.isnan(y)],bins=bins,density=True)
     return edges[:-1]+np.diff(edges)/2, hist
+
+def quiescent_speed(d,g,Cd):
+    return np.sqrt(4./3 * d * g /Cd)
+
+def quiescent_speed_visc(d,g,nu):
+    '''using Cd=24/Re
+    '''
+    return 1./18 * d**2 * g / nu
+
+def phys_params_given_nondim(Fr,dstar,u_vf,L_vf):
+    d = dstar * L_vf
+    g = u_vf**2 / (Fr**2*d)
+    return d,g
+
+def nu_given_Req(d,g,Cd_q,Re_q):
+    '''calculate viscosity given the quiescent parameters
+    '''
+    v_q = quiescent_speed(d,g,Cd_q)
+    nu = d*v_q / Re_q
+    return nu
+
+def nu_given_quiescent_visc(d,g,v_q):
+    '''calulate the new which yields v_q given d and g, assuming C_D = 24/Re
+    '''
+    return 1./18 * d**2 * g / v_q

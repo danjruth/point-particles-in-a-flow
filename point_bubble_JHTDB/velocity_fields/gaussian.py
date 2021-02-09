@@ -6,7 +6,7 @@ Created on Wed Feb  3 11:26:45 2021
 """
 
 import numpy as np
-from ..model import VelocityField
+from ..classes import VelocityField
 from .. import data
 
 def load_random_gaussian_velocity_field(res):
