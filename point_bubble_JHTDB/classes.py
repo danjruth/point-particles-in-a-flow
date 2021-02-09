@@ -202,22 +202,36 @@ class Force:
     
     def __init__(self,name='no_force'):
         self.name = name
+        self.const_params = []
     
     def __call__(self,p):
-        return np.zeros_like
+        return np.nan
         
 class EquationOfMotion:
-    '''the __call__ method returns the new particle velocities, given their
-    old velocities, the field state at their locations, the bubble parameters,
-    and teh timestep'''
+    '''the __call__ method returns the new particle velocities, given
+    parameters and data in the dict p
+    '''
     
-    def __init__(self,name='no_forces'):
+    def __init__(self,name='no_forces',forces=[]):
         self.name = name
+        self.forces = forces
+        c = [f.const_params for f in self.forces]
+        self.const_params = list({x for l in c for x in l})
     
-    def __call__(self,v,fs,sim,dt):
-        '''by default just return the old velocity'''
-        return v.copy()
-   
+    def calc_m_eff(self,p):
+        return np.nan
+        
+    def _pre_calculations(self,p):
+        '''update the dict p by performing some calculations on it (ie adding
+        an entry "vort" which is the vorticity, based on the entry "velgrad")
+        '''
+        return p
+    
+    def __call__(self,p,dt):
+        p = self._pre_calculations(p)
+        sum_forces = np.sum([f(p) for f in self.forces],axis=0)
+        a = sum_forces / self.calc_m_eff(p)
+        return p['v']+a*dt
     
 '''
 Class for a simulation
@@ -269,6 +283,10 @@ class Simulation:
         '''
         
         self = assign_attributes(self,self.phys_params,self.sim_params)
+        try:
+            self.eom.set_m_eff(self)
+        except:
+            pass
         
         # initial setup
         self.t = np.arange(self.t_min,self.t_max,self.dt)
@@ -300,23 +318,36 @@ class Simulation:
         self.t = np.arange(self.t_min,self.t_max,self.dt)
         self.n_t = len(self.t)
         
-    
-        
-    def _advance(self,ti):
+    def _construct_update_dict(self,ti):
+        '''Construct the dict p, which will contain the data with which the 
+        equation of motion is evaluated
+        '''
         
         # get the field state
         fs = self.velocity_field.get_field_state(self.t[ti],self.x[ti,...])
 
-        # next velocity and position, given current field state and velocity
-        v_new = self.eom(self.v[ti,...],fs,self,self.dt) # based on everything at this point in time
+        # add entries to p
+        p = {'v':self.v[ti,...]}
+        for key in ['u','dudt','velgrad',]:
+            p[key] = getattr(fs,key)
+        for key in self.eom.const_params:
+            p[key] = getattr(self,key)
+        p['slip'] = p['v']-p['u']
+        
+        return p
+        
+    def _advance(self,ti):
+        
+        p = self._construct_update_dict(ti)
+        v_new = self.eom(p,self.dt) # based on everything at this point in time
         x_new = self.x[ti,...]+v_new*self.dt
 
         # store the data
-        self.u[ti+1,...] = fs.u.copy() # assigning field state at t[ti] to ti+1?
+        self.u[ti+1,...] = p['u'].copy() # assigning field state at t[ti] to ti+1?
         self.v[ti+1,...] = v_new.copy()
         self.x[ti+1,...] = x_new.copy()
-        self.dudt[ti+1,...] = fs.dudt
-        self.velgrad[ti+1,...] = fs.velgrad
+        self.dudt[ti+1,...] = p['dudt'].copy()
+        self.velgrad[ti+1,...] = p['velgrad']
         
     def run(self):
         for ti in np.arange(self.ti,self.n_t-1,1):
