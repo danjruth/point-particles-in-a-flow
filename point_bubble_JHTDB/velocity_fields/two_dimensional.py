@@ -52,3 +52,10 @@ class SteadyPlanarPoiseuilleFlow(VelocityField):
         velgrad[:,0,1] = -8 * y / self.L**2
         velgrad = self._nan_outside_channel(x, velgrad)
         return velgrad
+    
+class BlasiusBoundaryLayer(VelocityField):
+    '''Blasius solution for the boundary layer over a flat plate with a steady
+    flow. Flow is in the x direction, and the boundary layer starts at x=0. The
+    wall-normal direction is y.
+    '''
+    pass
