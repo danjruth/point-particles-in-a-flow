@@ -55,46 +55,33 @@ class CompleteSim():
         the gravity-aligned coordinate system
         '''
         
-        # slip, vorticity, and bubble volume
-        slip = sim.v[:-1] - sim.u[1:]
-        vort = get_vorticity(sim.velgrad)
+        # gravity, for normalizing forces
         vol = (sim.d/2.)**3 * 4./3 * np.pi
+        self.grav_z = sim.g * vol
         
-        # gravity force
-        grav_z = sim.g * vol
-        
-        # calculate the forces, in DNS coords initially
-        press = []
-        drag = []
-        lift = []
-        u_times_deldotu_all = []
-        for i in [0,1,2]:
-            
-            u_times_deldotu = np.sum(sim.velgrad[1:,:,i,:]*sim.u[1:],axis=-1)
-            u_times_deldotu_all.append(u_times_deldotu)
-            press.append((1+sim.Cm)* vol * (sim.dudt[1:,:,i] + u_times_deldotu))
-            drag.append(-1*sim.Cd * 0.5 * np.pi * (sim.d/2)**2 * slip[...,i] * np.linalg.norm(slip[:,...],axis=-1))        
-            lift.append(-1 * sim.Cl * np.cross(slip,vort[1:])[...,i] * vol)
-            
-        # make each arrays
-        sim.u_times_deldotu = np.moveaxis(np.array(u_times_deldotu_all),0,-1)
-        sim.press = np.moveaxis(np.array(press),0,-1)
-        sim.drag = np.moveaxis(np.array(drag),0,-1)
-        sim.lift = np.moveaxis(np.array(lift),0,-1)
-        sim.slip = slip # sim.v - sim.u # differs from the definition of slip used to calculate the forces!
-        sim.vort = vort
-        sim.grav_z = grav_z
-        
+        # calculate forces over time
+        p = {'u':sim.u,'v':sim.v,'dudt':sim.dudt,'velgrad':sim.velgrad}
+        for key in sim.eom.const_params:
+            p[key] = getattr(sim,key)
+        p = sim.eom._pre_calculations(p)
+        forces = {f.short_name:f(p) for f in sim.eom.forces}
+        # add the time dimension to each force if it's not present
+        for f in forces:
+            if forces[f].ndim==2:
+                forces[f] = np.array([forces[f]]*len(sim.t))
+        # set force as attributes of sim
+        [setattr(sim,key,forces[key]) for key in forces]
+                
         # store rotated numerical results in a dict
         r = {}
-        fields_rot = ['v','u','slip','x','vort','dudt','u_times_deldotu','press','drag','lift']
+        fields_rot = ['v','u','x','dudt',]+list(forces.keys()) # todo: include velgrad
         for f in fields_rot:
             r[f] = rot_all(getattr(sim,f),sim.g_dir)            
-        self.grav_z = grav_z
         r['t'] = sim.t
         r['x'] = r['x'] - r['x'][0,:,:]
         
-        for var in ['v','u','slip','x','vort','dudt','t']:
+        # get rid of the first index
+        for var in ['v','u','x','dudt','t']+list(forces.keys()):
             r[var] = r[var][:-1]
             
         # make this dict an attribute; can be accessed via subscripting

@@ -16,7 +16,7 @@ import pandas as pd
 import toolkit.parallel
 import time
 
-vf = gaussian.RandomGaussianVelocityField(n_modes=6,u_rms=1,L_int=1)
+vf = gaussian.RandomGaussianVelocityField(n_modes=18,u_rms=1,L_int=1)
 vf.init_field()
 
 d,g = analysis.dg_given_nondim(3, 0.1, vf.u_char, vf.L_char)
@@ -26,17 +26,24 @@ phys_params = {'d':d,
                 'Cm':0.5,
                 'Cd':1,
                 'Cl':0.0}
-sim_params = {'n_bubs':5,
+
+sim_params = {'n_bubs':1000,
               'dt':1e-3,
               't_min':0,
-              't_max':0.5,
+              't_max':8,
               'fname':'inertial'}
+
 eom = equations.MaxeyRileyPointBubbleConstantCoefs()
 sim = pb.Simulation(vf,phys_params,sim_params,eom)
 sim.init_sim(g_dir='random')
 t1 = time.time()
 sim.run()
 print(time.time()-t1)
+a = analysis.CompleteSim(sim)
+a.set_min_valid_time(2,units='T_vf')
+print(np.mean(a['v'],axis=(0,1))/a.v_q)
+
+stophere
 
 phys_params = {'d':d,
                 'g':g,

@@ -46,21 +46,7 @@ class RandomGaussianVelocityField(VelocityField):
         self.c = np.random.normal(scale=u_rms,size=(n_modes,3))
         self.k = np.random.normal(scale=1./L_int,size=(n_modes,3))
         self.omega = np.random.normal(scale=1/T_int,size=(n_modes))
-        
-    # def get_velocity(self,t,x):
-    #     b = self.b
-    #     c = self.c
-    #     k = self.k
-    #     omega = self.omega
-    #     n_modes = self.n_modes
-        
-    #     vel = np.zeros((len(x),3))
-    #     for m in range(n_modes):
-    #         # outer product of the sin/cos term (len n_bubs) and the 3 coefficients for this mode gives shape (n_bubs,3)
-    #         mode_contribution = np.outer(np.sin(np.dot(x,k[m,:])+omega[m]*t),b[m,:]) + np.outer(np.cos(np.dot(x,k[m,:])+omega[m]*t),c[m,:])
-    #         vel = vel + mode_contribution
-    #     return vel/np.sqrt(n_modes)
-    
+
     def get_velocity(self,t,x):
         b = self.b
         c = self.c
@@ -69,10 +55,9 @@ class RandomGaussianVelocityField(VelocityField):
         n_modes = self.n_modes
         
         dp = np.tensordot(x,k,axes=(1,1))
-        operand = dp + omega*t        
+        operand = dp + omega*t
         vel = np.tensordot(b,np.sin(operand),axes=(0,1)) + np.tensordot(c,np.cos(operand),axes=(0,1))
         return vel.T/np.sqrt(n_modes)
-        
     
     def get_velocity_gradient(self,t,x):
         b = self.b
@@ -81,12 +66,10 @@ class RandomGaussianVelocityField(VelocityField):
         omega = self.omega
         n_modes = self.n_modes
         
-        velgrad = np.zeros((len(x),3,3))
-        for m in range(n_modes):
-            mode_contribution = np.zeros((len(x),3,3))
-            for j in range(3):
-                mode_contribution[:,:,j] = k[m,j]*np.outer(np.cos(np.dot(x,k[m,:])+omega[m]*t),b[m,:]) - k[m,j]*np.outer(np.sin(np.dot(x,k[m,:])+omega[m]*t),c[m,:])
-            velgrad = velgrad + mode_contribution
+        dp = np.tensordot(x,k,axes=(1,1))
+        operand = dp + omega*t
+        velgrad = np.tensordot(np.einsum('mj,mi->mij',k,b,),np.cos(operand),axes=(0,1)) - np.tensordot(np.einsum('mj,mi->mij',k,c,),np.sin(operand),axes=(0,1))
+        velgrad = np.moveaxis(velgrad,-1,0)        
         return velgrad/np.sqrt(n_modes)
     
     def get_dudt(self,t,x,u_t=None):
@@ -96,11 +79,10 @@ class RandomGaussianVelocityField(VelocityField):
         omega = self.omega
         n_modes = self.n_modes
         
-        dudt = np.zeros((len(x),3))
-        for m in range(n_modes):
-            mode_contribution = omega[m]*np.outer(np.cos(np.dot(x,k[m,:])+omega[m]*t),b[m,:]) - omega[m]*np.outer(np.sin(np.dot(x,k[m,:])+omega[m]*t),c[m,:])
-            dudt = dudt + mode_contribution
-        return dudt/np.sqrt(n_modes)
+        dp = np.tensordot(x,k,axes=(1,1))
+        operand = dp + omega*t
+        dudt = np.tensordot((b.T*omega).T,np.cos(operand),axes=(0,1)) - np.tensordot((c.T*omega).T,np.sin(operand),axes=(0,1))
+        return dudt.T/np.sqrt(n_modes)
     
 def combine_Gaussian_fields(fields):
     '''Superpose many Gaussian fields

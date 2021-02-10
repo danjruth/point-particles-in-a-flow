@@ -200,8 +200,9 @@ Class for the equation of motion
 
 class Force:
     
-    def __init__(self,name='no_force'):
+    def __init__(self,name='no_force',short_name='no_force'):
         self.name = name
+        self.short_name = short_name
         self.const_params = []
     
     def __call__(self,p):
@@ -333,7 +334,6 @@ class Simulation:
             p[key] = getattr(fs,key)
         for key in self.eom.const_params:
             p[key] = getattr(self,key)
-        p['slip'] = p['v']-p['u']
         
         return p
         

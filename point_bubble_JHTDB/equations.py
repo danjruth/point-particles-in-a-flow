@@ -28,6 +28,7 @@ class MaxeyRileyPointBubbleConstantCoefs(EquationOfMotion):
         
     def _pre_calculations(self,p):
         p['vort'] = get_vorticity(p['velgrad'])
+        p['slip'] = p['v']-p['u']
         return p
     
 class MaxeyRileyPointBubbleConstantCoefsVisc(EquationOfMotion):
@@ -46,6 +47,7 @@ class MaxeyRileyPointBubbleConstantCoefsVisc(EquationOfMotion):
         
     def _pre_calculations(self,p):
         p['vort'] = get_vorticity(p['velgrad'])
+        p['slip'] = p['v']-p['u']
         return p
     
 class LagrangianEOM(EquationOfMotion):
@@ -53,7 +55,9 @@ class LagrangianEOM(EquationOfMotion):
         super().__init__(name='Lagrangian')
         
     def __call__(self,p,dt):
-        '''return the fluid velocity at the particle locations
+        '''overwrite to return the fluid velocity at the particle locations;
+        otherwise it would try to sum forces, but there are no forces for this
+        EOM
         '''
         return p['u']
     
@@ -63,7 +67,7 @@ Forces
 
 class PressureForceBubble(Force):    
     def __init__(self):
-        super().__init__(name='pressure_bubble')
+        super().__init__(name='pressure_bubble',short_name='press')
         self.const_params = ['d','Cm']
     def __call__(self,p):
         u = p['u']
@@ -71,15 +75,14 @@ class PressureForceBubble(Force):
         dudt = p['dudt']
         d = p['d']
         Cm = p['Cm']
-        u_times_deldotu = np.array([np.sum(velgrad[...,0,:]*u,axis=-1),
-                                np.sum(velgrad[...,1,:]*u,axis=-1),
-                                np.sum(velgrad[...,2,:]*u,axis=-1)]).T
+        u_times_deldotu = np.array([np.sum(velgrad[...,i,:]*u,axis=-1) for i in range(3)])
+        u_times_deldotu = np.moveaxis(u_times_deldotu,0,-1)
         press = (1+Cm) * (d/2)**3*4./3*np.pi * (dudt + u_times_deldotu)
         return press
 
 class GravForceBubble(Force):    
     def __init__(self):
-        super().__init__(name='grav_bubble')
+        super().__init__(name='grav_bubble',short_name='grav')
         self.const_params = ['d','g_dir','g']
     def __call__(self,p):
         g = p['g']
@@ -89,7 +92,7 @@ class GravForceBubble(Force):
 
 class ConstantCDDragForce(Force):    
     def __init__(self):
-        super().__init__(name='constant_CD_drag')
+        super().__init__(name='constant_CD_drag',short_name='drag')
         self.const_params = ['d','Cd']
     def __call__(self,p):
         Cd = p['Cd']
@@ -99,7 +102,7 @@ class ConstantCDDragForce(Force):
 
 class ViscousDragForce(Force):    
     def __init__(self):
-        super().__init__(name='viscous_drag')
+        super().__init__(name='viscous_drag',short_name='drag')
         self.const_params = ['d','nu']
     def __call__(self,p):
         nu = p['nu']
@@ -113,7 +116,7 @@ class ViscousDragForce(Force):
 
 class ConstantCLLiftForce(Force):    
     def __init__(self):
-        super().__init__(name='lift_bubble')     
+        super().__init__(name='lift_bubble',short_name='lift')   
         self.const_params = ['d','Cl']
     def __call__(self,p):
         Cl = p['Cl']
@@ -127,14 +130,18 @@ Helper functions for calculating forces
 '''
 
 def calc_drag_force(slip,d,Cd):
-    drag = -1/8 * Cd * np.pi * d**2 * (slip.T*np.linalg.norm(slip,axis=-1)).T
+    slip_mag = np.linalg.norm(slip,axis=-1)
+    slip = np.moveaxis(slip,-1,0)
+    drag = -1/8 * Cd * np.pi * d**2 * (slip*slip_mag)
+    drag = np.moveaxis(drag,0,-1)
     return drag
 
 def get_vorticity(velgrad):
-    vort = np.zeros((len(velgrad),3)) # 
-    vort[:,0] = velgrad[...,2,1] - velgrad[...,1,2]
-    vort[:,1] = velgrad[...,0,2] - velgrad[...,2,0]
-    vort[:,2] = velgrad[...,1,0] - velgrad[...,0,1]
+    shape_velgrad = np.shape(velgrad)
+    vort = np.zeros(shape_velgrad[:-1]) # 
+    vort[...,0] = velgrad[...,2,1] - velgrad[...,1,2]
+    vort[...,1] = velgrad[...,0,2] - velgrad[...,2,0]
+    vort[...,2] = velgrad[...,1,0] - velgrad[...,0,1]
     return vort
 
 def calc_Cd_Snyder(Re):
