@@ -278,7 +278,7 @@ class Simulation:
         self.sim_params = sim_params
         self.eom = eom
         
-    def init_sim(self,g_dir='z',pos_lims=((0,0,0),(2*np.pi,2*np.pi,2*np.pi)),vz_0=0):
+    def init_sim(self,g_dir='-z',pos_lims=((0,0,0),(2*np.pi,2*np.pi,2*np.pi)),vz_0=0):
         '''
         Initialize the simulation. Should only be called when the simulation is
         first created, not when it's being reloaded from some intermediate
@@ -304,10 +304,10 @@ class Simulation:
         # define the direction of gravity for each bubble
         if g_dir == 'random':
             self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:]
-        gdir_dict = {'x':0,'y':1,'z':2}
+        gdir_dict = {'-x':0,'-y':1,'-z':2}
         if g_dir in gdir_dict:
             self.g_dir = np.zeros((n_bubs,3))
-            self.g_dir[:,gdir_dict[g_dir]] = 1
+            self.g_dir[:,gdir_dict[g_dir]] = -1
         
         self.x = np.zeros((n_t,n_bubs,3))
         self.u = np.zeros((n_t,n_bubs,3))

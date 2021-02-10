@@ -144,7 +144,7 @@ def rot_all(arrs,g_dirs,actually_rot=True):
     if actually_rot:
         arrs_new = []
         for i in np.arange(len(g_dirs)):
-            arrs_new.append(rot_coord_system(arrs[:,i,:],g_dirs[i,:]))        
+            arrs_new.append(rot_coord_system(arrs[:,i,:],g_dirs[i,:]*-1))        
         arrs_new = np.moveaxis(np.array(arrs_new),0,1)
         return arrs_new
     else:

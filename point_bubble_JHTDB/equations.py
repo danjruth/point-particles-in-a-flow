@@ -88,7 +88,7 @@ class GravForceBubble(Force):
         g = p['g']
         d = p['d']
         g_dir = p['g_dir']
-        return g*(d/2)**3*4./3*np.pi * g_dir
+        return -1 * g*(d/2)**3*4./3*np.pi * g_dir
 
 class ConstantCDDragForce(Force):    
     def __init__(self):
