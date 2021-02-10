@@ -27,6 +27,7 @@ class VelocityField:
         self.u_char = np.nan
         self.T_char = np.nan
         self.L_char = np.nan
+        self.pos_lims = ((-np.inf,-np.inf,-np.inf),(np.inf,np.inf,np.inf))
         pass
     
     def init_field(self):
@@ -303,9 +304,10 @@ class Simulation:
         # define the direction of gravity for each bubble
         if g_dir == 'random':
             self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:]
-        elif g_dir == 'z':
+        gdir_dict = {'x':0,'y':1,'z':2}
+        if g_dir in gdir_dict:
             self.g_dir = np.zeros((n_bubs,3))
-            self.g_dir[:,-1] = 1
+            self.g_dir[:,gdir_dict[g_dir]] = 1
         
         self.x = np.zeros((n_t,n_bubs,3))
         self.u = np.zeros((n_t,n_bubs,3))

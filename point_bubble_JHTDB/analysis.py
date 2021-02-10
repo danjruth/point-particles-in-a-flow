@@ -12,10 +12,13 @@ import pandas as pd
 
 class CompleteSim():
     
-    def __init__(self,sim,norm=False):
+    def __init__(self,sim,norm=False,rotated=True):
         
         # should arrays be normalized when returned
         self.norm = norm
+        
+        # are the vectors to be rotated s.t. z is parallel to gravity
+        self.rotated = rotated
         
         # copy parameters from the Simulation
         self.velocity_field = sim.velocity_field
@@ -36,7 +39,9 @@ class CompleteSim():
         self.Fr = self.u_vf / np.sqrt(self.d*self.g)
         
         # get the forces and rotate everything so z is aligned with gravity for each bubble
-        self._forces_and_rotation(sim)
+        self._calc_forces(sim)
+        self._rotate_and_store(sim,actually_rotate=rotated)
+        self._remove_first_index(sim)
         
         # minimum index from which to return the data through __call__
         self.ti_min = 0
@@ -50,7 +55,7 @@ class CompleteSim():
                      'u_vf_by_g':self.u_vf/self.g}
         self.ti_min = int(round(n*unit_durs[units]))
         
-    def _forces_and_rotation(self,sim):
+    def _calc_forces(self,sim):
         '''Compute the forces acting on the particle, and rotate all vectors to
         the gravity-aligned coordinate system
         '''
@@ -71,21 +76,26 @@ class CompleteSim():
                 forces[f] = np.array([forces[f]]*len(sim.t))
         # set force as attributes of sim
         [setattr(sim,key,forces[key]) for key in forces]
+        
+    def _rotate_and_store(self,sim,actually_rotate=True):
+        
+        forces = [f.short_name for f in sim.eom.forces]
                 
         # store rotated numerical results in a dict
         r = {}
-        fields_rot = ['v','u','x','dudt',]+list(forces.keys()) # todo: include velgrad
+        fields_rot = ['v','u','x','dudt',]+forces # todo: include velgrad
         for f in fields_rot:
-            r[f] = rot_all(getattr(sim,f),sim.g_dir)            
+            r[f] = rot_all(getattr(sim,f),sim.g_dir,actually_rot=actually_rotate)            
         r['t'] = sim.t
-        r['x'] = r['x'] - r['x'][0,:,:]
+        self.r = r
+        
+    def _remove_first_index(self,sim):
+        
+        forces = [f.short_name for f in sim.eom.forces]
         
         # get rid of the first index
-        for var in ['v','u','x','dudt','t']+list(forces.keys()):
-            r[var] = r[var][:-1]
-            
-        # make this dict an attribute; can be accessed via subscripting
-        self.r = r
+        for var in ['v','u','x','dudt','t']+forces:
+            self.r[var] = self.r[var][:-1]
         
     def __getitem__(self,f):
         

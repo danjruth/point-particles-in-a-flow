@@ -9,40 +9,41 @@ Created on Tue Feb  9 16:55:07 2021
 
 import point_bubble_JHTDB as pb
 from point_bubble_JHTDB import analysis, equations
-from point_bubble_JHTDB.velocity_fields import gaussian
+from point_bubble_JHTDB.velocity_fields import gaussian, poiseuille
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import toolkit.parallel
 import time
 
-vf = gaussian.RandomGaussianVelocityField(n_modes=18,u_rms=1,L_int=1)
+#vf = gaussian.RandomGaussianVelocityField(n_modes=64,u_rms=1,L_int=1)
+vf = poiseuille.SteadyPlanarPoiseuilleFlow()
 vf.init_field()
 
-d,g = analysis.dg_given_nondim(3, 0.1, vf.u_char, vf.L_char)
+d,g = analysis.dg_given_nondim(1, 0.1, vf.u_char, vf.L_char)
 
 phys_params = {'d':d,
                 'g':g,
                 'Cm':0.5,
                 'Cd':1,
-                'Cl':0.0}
+                'Cl':0.5}
 
-sim_params = {'n_bubs':1000,
+sim_params = {'n_bubs':1,
               'dt':1e-3,
               't_min':0,
-              't_max':8,
+              't_max':4,
               'fname':'inertial'}
 
 eom = equations.MaxeyRileyPointBubbleConstantCoefs()
 sim = pb.Simulation(vf,phys_params,sim_params,eom)
-sim.init_sim(g_dir='random')
+sim.init_sim(g_dir='y')
+sim.x[0,0,:] = np.array([0,0.5,0])
+sim.v[0,0,:] = np.array([0,-sim.v_q,0])*10
 t1 = time.time()
 sim.run()
 print(time.time()-t1)
-a = analysis.CompleteSim(sim)
-a.set_min_valid_time(2,units='T_vf')
-print(np.mean(a['v'],axis=(0,1))/a.v_q)
-
+a = analysis.CompleteSim(sim,rotated=False)
+plt.figure();plt.plot(a['t'],a['x'][:,0,:])
 stophere
 
 phys_params = {'d':d,
