@@ -350,6 +350,7 @@ class Simulation:
         p = self._construct_update_dict(ti)
         v_new = self.eom(p,self.dt) # based on everything at this point in time
         x_new = self.x[ti,...]+v_new*self.dt
+        print(x_new[0,:])
         
         # for now, limit the x data to the values in eom.pos_lims
         for i in range(3):
@@ -365,6 +366,7 @@ class Simulation:
         
     def run(self):
         for ti in np.arange(self.ti,self.n_t-1,1):
+            print(ti)
             self._advance(ti)
             self.ti = ti
             

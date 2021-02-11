@@ -142,7 +142,7 @@ class ViscousDragForce(Force):
         slip_norm = np.linalg.norm(slip,axis=-1)
         Re = slip_norm * d / nu
         Cd = 24./Re
-        Cd = np.array([Cd]*3).T
+        Cd = np.array([Cd]*3).T # [3] or [n_bub,3]
         return calc_drag_force(slip,d,Cd)
 
 class ConstantCLLiftForce(Force):    
@@ -161,10 +161,11 @@ Helper functions for calculating forces
 '''
 
 def calc_drag_force(slip,d,Cd):
+    # need to move component axis of slip, Cd to front for multiplication
     slip_mag = np.linalg.norm(slip,axis=-1)
     slip = np.moveaxis(slip,-1,0)
-    if len(np.shape(Cd))==2:
-        Cd = Cd.T
+    if len(np.shape(Cd))>1:
+        Cd = np.moveaxis(Cd,-1,0)
     drag = -1/8 * Cd * np.pi * d**2 * (slip*slip_mag)
     drag = np.moveaxis(drag,0,-1)
     return drag
