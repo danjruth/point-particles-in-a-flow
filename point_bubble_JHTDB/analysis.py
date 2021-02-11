@@ -97,7 +97,7 @@ class CompleteSim():
         
         # get rid of the first index
         for var in ['v','u','x','dudt','t']+forces:
-            self.r[var] = self.r[var][:-1]
+            self.r[var] = self.r[var][1:]
         
     def __getitem__(self,f):
         

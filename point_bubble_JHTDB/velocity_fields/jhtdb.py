@@ -47,6 +47,27 @@ if lJHTDB_available:
                 self.dt_orig = 0.0002
                 self.t_min = 0.
                 self.t_max = 10.
+                
+            elif data_set=='channel':
+                ''' channel flow in the x direction
+                http://turbulence.pha.jhu.edu/docs/README-CHANNEL.pdf
+                '''
+                self.u_bulk = 1
+                self.u_centerline = 1.1312
+                self.u_tau = 4.9968e-2
+                self.half_channel_height = 1 
+                self.Re_bulk_fullheight = 3.9998e4
+                self.nu = 5e-5
+                
+                self.u_char = self.u_bulk
+                self.L_char = self.half_channel_height
+                self.T_char = self.L_char / self.u_char
+                
+                self.t_min = 0.
+                self.t_max = 25.9935
+                self.dt = 0.0013 # the timestep at which the DNS data is stored, = 10*dt_orig
+                self.dt_orig = 0.0065
+                
             
         def get_velocity(self,t,x,lJHTDB=None):
             if lJHTDB is None:

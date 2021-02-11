@@ -100,7 +100,7 @@ phys_params = {'d':d,
                 'Cl':0.5}
 eom = equations.MaxeyRileyPointBubbleConstantCoefs()
 sim3 = pb.Simulation(vf,phys_params,sim_params,eom)
-sim3.init_sim(g_dir='z')
+sim3.init_sim(g_dir='-z')
 sim3.g_dir = sim2.g_dir.copy()
 sim3.x[0] = sim2.x[0].copy()
 t1 = time.time()

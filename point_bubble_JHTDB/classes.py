@@ -304,6 +304,8 @@ class Simulation:
         
         if vz_0 == 'v_q':
             vz_0 = self.v_q
+        if vz_0 == '-v_q':
+            vz_0 = self.v_q * -1
         
         # define the direction of gravity for each bubble
         if g_dir == 'random':
