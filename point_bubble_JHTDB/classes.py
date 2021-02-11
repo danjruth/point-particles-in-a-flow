@@ -353,8 +353,8 @@ class Simulation:
         
         # for now, limit the x data to the values in eom.pos_lims
         for i in range(3):
-            x_new[x_new[:,i]<self.pos_lims[0][i],i] = self.pos_lims[0][i]
-            x_new[x_new[:,i]>self.pos_lims[1][i],i] = self.pos_lims[1][i]
+            x_new[x_new[:,i]<self.eom.pos_lims[0][i],i] = self.eom.pos_lims[0][i]
+            x_new[x_new[:,i]>self.eom.pos_lims[1][i],i] = self.eom.pos_lims[1][i]
 
         # store the data
         self.u[ti+1,...] = p['u'].copy() # assigning field state at t[ti] to ti+1?
