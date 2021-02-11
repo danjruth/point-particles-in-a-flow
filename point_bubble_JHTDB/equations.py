@@ -6,7 +6,7 @@ Created on Tue Feb  9 15:11:13 2021
 """
 
 import numpy as np
-from . import EquationOfMotion, Force
+from point_bubble_JHTDB import EquationOfMotion, Force
 
 '''
 Classes for equations of motion
@@ -31,9 +31,28 @@ class MaxeyRileyPointBubbleConstantCoefs(EquationOfMotion):
         p['slip'] = p['v']-p['u']
         return p
     
+class MaxeyRileyPointBubbleSnyder2007(EquationOfMotion):
+    '''Maxey-Riley equation for a bubble in a much denser liquid, as used in 
+    Snyder2007 [not yet complete]
+    '''
+    def __init__(self):
+        super().__init__(name='MaxeyRiley_pointbubble_constantcoefficients',
+                         forces=[PressureForceBubble(),
+                                 GravForceBubble(),
+                                 DragForceSnyder2007(),
+                                 ConstantCLLiftForce()])
+        
+    def calc_m_eff(self,p):
+        return p['Cm']*(p['d']/2)**3*4./3*np.pi
+        
+    def _pre_calculations(self,p):
+        p['vort'] = get_vorticity(p['velgrad'])
+        p['slip'] = p['v']-p['u']
+        return p
+    
 class MaxeyRileyPointBubbleConstantCoefsVisc(EquationOfMotion):
     '''Maxey-Riley equation for a bubble in a much denser liquid, with constant
-    lift, drag, and added-mass coefficients
+    lift and added-mass coefficients, and Cd=24./Re for linear drag.
     '''
     def __init__(self):
         super().__init__(name='MaxeyRiley_pointbubble_constantcoefficients',
@@ -99,6 +118,18 @@ class ConstantCDDragForce(Force):
         d = p['d']
         slip = p['slip']
         return calc_drag_force(slip,d,Cd)
+    
+class DragForceSnyder2007(Force):    
+    def __init__(self):
+        super().__init__(name='drag_Snyder2007',short_name='drag')
+        self.const_params = ['d','nu']
+    def __call__(self,p):
+        d = p['d']
+        nu = p['nu']
+        slip = p['slip']
+        Re = np.linalg.norm(slip,axis=-1)*d/nu
+        Cd = calc_Cd_Snyder(Re)
+        return calc_drag_force(slip,d,Cd)
 
 class ViscousDragForce(Force):    
     def __init__(self):
@@ -149,10 +180,16 @@ def calc_Cd_Snyder(Re):
     '''
     Re = np.atleast_1d(Re)
     Cd = np.zeros_like(Re)
-    ix_low = np.argwhere(Re<1)
-    ix_med = np.argwhere((Re>=1)*(Re<20))
-    ix_high = np.argwhere(Re>=20)
-    Cd[ix_low] = 24/Re[ix_low]
-    Cd[ix_med] = (24./Re[ix_med]) * (1 + (3.6/Re[ix_med]**0.313)*((Re[ix_med]-1)/19)**2)
-    Cd[ix_high] = (24./Re[ix_high]) * (1 + 0.15*Re[ix_high]**0.687)
+    # ix_low = np.argwhere(Re<1)
+    # ix_med = np.argwhere((Re>=1)*(Re<20))
+    # ix_high = np.argwhere(Re>=20)
+    # ix_0 = np.argwhere(Re==0)
+    # Cd[ix_low] = 24/Re[ix_low]
+    # Cd[ix_med] = (24./Re[ix_med]) * (1 + (3.6/Re[ix_med]**0.313)*((Re[ix_med]-1)/19)**2)
+    # Cd[ix_high] = (24./Re[ix_high]) * (1 + 0.15*Re[ix_high]**0.687)
+    # Cd[ix_0] = 1 # value doesn't matter, just can't be nan or inf
+    Cd[Re<1] = 24/Re[Re<1]
+    Cd[Re>=1] = (24./Re[Re>=1]) * (1 + (3.6/Re[Re>=1]**0.313)*((Re[Re>=1]-1)/19)**2)
+    Cd[Re>=20] = (24./Re[Re>=20]) * (1 + 0.15*Re[Re>=20]**0.687)
+    Cd[Re==0] = 1 # value doesn't matter, just can't be nan or inf
     return Cd

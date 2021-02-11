@@ -8,7 +8,7 @@ Created on Mon Jun 29 14:59:40 2020
 import numpy as np
 import pickle
 from scipy.spatial.transform import Rotation
-from . import data, analysis
+from point_bubble_JHTDB import data, analysis
 #from .equations import quiescent_speed
 
 '''
@@ -42,7 +42,6 @@ class VelocityField:
     '''
     
     def get_velocity(self,t,x):
-        print('getting quiescent velocity')
         return np.zeros((len(x),3))
     
     def get_dudt(self,t,x,u_t=None):
@@ -217,11 +216,16 @@ class EquationOfMotion:
     def __init__(self,name='no_forces',forces=[]):
         self.name = name
         self.forces = forces
+        # store info about the forces involved
         c = [f.const_params for f in self.forces]
         self.const_params = list({x for l in c for x in l})
         self.force_names = [f.name for f in self.forces]
+        self.force_short_names = [f.short_name for f in self.forces]
     
     def calc_m_eff(self,p):
+        '''Calculate the effective particle mass by which to divide the sum of
+        the forces in order to calculate the particle acceleration.
+        '''
         return np.nan
         
     def _pre_calculations(self,p):

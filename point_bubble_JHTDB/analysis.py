@@ -7,6 +7,8 @@ Created on Sun Jul 19 11:55:39 2020
 
 import numpy as np
 import pickle
+#import point_bubble_JHTDB.classes
+#import point_bubble_JHTDB.equations
 from . import classes
 import pandas as pd
 
@@ -34,7 +36,7 @@ class CompleteSim():
             
         # nondimensional numbers
         self.dstar = self.d / self.L_vf
-        self.dstar_by_Cd = self.dstar / self.Cd
+        #self.dstar_by_Cd = self.dstar / self.Cd
         self.beta = self.u_vf / self.v_q
         self.Fr = self.u_vf / np.sqrt(self.d*self.g)
         
@@ -217,6 +219,6 @@ def nu_given_Req(d,g,Cd_q,Re_q):
     return nu
 
 def nu_given_quiescent_visc(d,g,v_q):
-    '''calulate the new which yields v_q given d and g, assuming C_D = 24/Re
+    '''calulate the nu which yields v_q given d and g, assuming C_D = 24/Re
     '''
     return 1./18 * d**2 * g / v_q
