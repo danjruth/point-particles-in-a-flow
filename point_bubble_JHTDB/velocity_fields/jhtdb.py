@@ -23,6 +23,7 @@ ISOTROPIC1024COARSE_PARAMS = dict(
     L_int = 1.364,
     eta = 0.00280,
     T_eta = 0.0424,
+    nu = 0.000185,
     lam = 0.113,    
     dx = 2*np.pi / 1024.,
     dt = 0.002, # the timestep at which the DNS data is stored, = 10*dt_orig
@@ -37,7 +38,7 @@ ISOTROPIC1024COARSE_PARAMS['T_char'] = ISOTROPIC1024COARSE_PARAMS['T_int']
 
 # channel flow parameters
 CHANNEL_PARAMS = dict(
-    u_bulk = 1,
+    u_bulk = 1.,
     u_centerline = 1.1312,
     u_tau = 4.9968e-2,
     half_channel_height = 1,

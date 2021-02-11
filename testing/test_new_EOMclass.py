@@ -24,10 +24,6 @@ vf.init_field()
 
 d,g = analysis.dg_given_nondim(4, 0.1, vf.u_char, vf.L_char)
 
-# '''
-# Constant Cd
-# '''
-
 phys_params = {'d':d,
                 'g':g,
                 'Cm':0.5,
@@ -39,7 +35,6 @@ sim_params = {'n_bubs':500,
               't_min':0,
               't_max':18,
               'fname':'inertial'}
-
 
 '''
 Snyder, quiescent field

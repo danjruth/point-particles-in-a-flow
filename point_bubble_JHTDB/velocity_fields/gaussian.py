@@ -24,7 +24,7 @@ class RandomGaussianVelocityField(VelocityField):
         super().__init__(name='random_gaussian')
         self.n_modes = n_modes
         self.u_rms = u_rms
-        self.L_int = L_int        
+        self.L_int = L_int
         self.T_int = L_int/u_rms
         
         self.u_char = u_rms
