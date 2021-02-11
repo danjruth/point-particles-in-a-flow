@@ -16,6 +16,46 @@ try:
 except ImportError:
     print('Unable to import pyJHTDB and initialize')
     lJHTDB_available = False
+    
+# isotropic 1024 coarse simulation parameters
+ISOTROPIC1024COARSE_PARAMS = dict(
+    u_rms = 0.686,
+    L_int = 1.364,
+    eta = 0.00280,
+    T_eta = 0.0424,
+    lam = 0.113,    
+    dx = 2*np.pi / 1024.,
+    dt = 0.002, # the timestep at which the DNS data is stored, = 10*dt_orig
+    dt_orig = 0.0002,
+    t_min = 0.,
+    t_max = 10.,
+    )
+ISOTROPIC1024COARSE_PARAMS['T_int'] = ISOTROPIC1024COARSE_PARAMS['L_int']/ISOTROPIC1024COARSE_PARAMS['u_rms']
+ISOTROPIC1024COARSE_PARAMS['u_char'] = ISOTROPIC1024COARSE_PARAMS['u_rms']
+ISOTROPIC1024COARSE_PARAMS['L_char'] = ISOTROPIC1024COARSE_PARAMS['L_int']
+ISOTROPIC1024COARSE_PARAMS['T_char'] = ISOTROPIC1024COARSE_PARAMS['T_int']
+
+# channel flow parameters
+CHANNEL_PARAMS = dict(
+    u_bulk = 1,
+    u_centerline = 1.1312,
+    u_tau = 4.9968e-2,
+    half_channel_height = 1,
+    Re_bulk_fullheight = 3.9998e4,
+    nu = 5e-5,
+    pos_lims = ((-np.inf,-1,-np.inf),(np.inf,1,np.inf)),    
+    t_min = 0.,
+    t_max = 25.9935,
+    dt = 0.0013,
+    dt_orig = 0.0065,
+    )
+CHANNEL_PARAMS['u_char'] = CHANNEL_PARAMS['u_bulk']
+CHANNEL_PARAMS['L_char'] = CHANNEL_PARAMS['half_channel_height']
+CHANNEL_PARAMS['T_char'] = CHANNEL_PARAMS['L_char']/CHANNEL_PARAMS['u_char']
+
+# put all dataset parameter dicts into one dict
+JHTDB_DATASET_PARAMS = {'isotropic1024coarse':ISOTROPIC1024COARSE_PARAMS,
+                        'channel':CHANNEL_PARAMS}
 
 # only define the velocity field class for this if the interface to the JHTDB
 # is available
@@ -29,46 +69,9 @@ if lJHTDB_available:
             self.data_set = data_set
             self.lJHTDB = lJHTDB
             
-            # store physical and simulation propertie
-            if data_set=='isotropic1024coarse':
-                self.u_rms = 0.686
-                self.L_int = 1.364
-                self.T_int = self.L_int/self.u_rms
-                self.eta = 0.00280
-                self.T_eta = 0.0424
-                self.lam = 0.113
-                
-                self.u_char = self.u_rms
-                self.L_char = self.L_int
-                self.T_char = self.T_int
-                
-                self.dx = 2*np.pi / 1024.
-                self.dt = 0.002 # the timestep at which the DNS data is stored, = 10*dt_orig
-                self.dt_orig = 0.0002
-                self.t_min = 0.
-                self.t_max = 10.
-                
-            elif data_set=='channel':
-                ''' channel flow in the x direction
-                http://turbulence.pha.jhu.edu/docs/README-CHANNEL.pdf
-                '''
-                self.u_bulk = 1
-                self.u_centerline = 1.1312
-                self.u_tau = 4.9968e-2
-                self.half_channel_height = 1
-                self.Re_bulk_fullheight = 3.9998e4
-                self.nu = 5e-5
-                self.pos_lims = ((-np.inf,-1,-np.inf),(np.inf,1,np.inf))
-                
-                self.u_char = self.u_bulk
-                self.L_char = self.half_channel_height
-                self.T_char = self.L_char / self.u_char
-                
-                self.t_min = 0.
-                self.t_max = 25.9935
-                self.dt = 0.0013 # the timestep at which the DNS data is stored, = 10*dt_orig
-                self.dt_orig = 0.0065
-                
+            # store the parameters for this dataset
+            if data_set in JHTDB_DATASET_PARAMS:
+                [setattr(self,key,JHTDB_DATASET_PARAMS[data_set][key]) for key in JHTDB_DATASET_PARAMS[data_set]]                
             
         def get_velocity(self,t,x,lJHTDB=None):
             if lJHTDB is None:
