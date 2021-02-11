@@ -55,9 +55,10 @@ if lJHTDB_available:
                 self.u_bulk = 1
                 self.u_centerline = 1.1312
                 self.u_tau = 4.9968e-2
-                self.half_channel_height = 1 
+                self.half_channel_height = 1
                 self.Re_bulk_fullheight = 3.9998e4
                 self.nu = 5e-5
+                self.pos_lims = ((-np.inf,-1,-np.inf),(np.inf,1,np.inf))
                 
                 self.u_char = self.u_bulk
                 self.L_char = self.half_channel_height

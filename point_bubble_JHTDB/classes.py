@@ -350,6 +350,11 @@ class Simulation:
         p = self._construct_update_dict(ti)
         v_new = self.eom(p,self.dt) # based on everything at this point in time
         x_new = self.x[ti,...]+v_new*self.dt
+        
+        # for now, limit the x data to the values in eom.pos_lims
+        for i in range(3):
+            x_new[x_new[:,i]<self.pos_lims[0][i],i] = self.pos_lims[0][i]
+            x_new[x_new[:,i]>self.pos_lims[1][i],i] = self.pos_lims[1][i]
 
         # store the data
         self.u[ti+1,...] = p['u'].copy() # assigning field state at t[ti] to ti+1?
