@@ -5,7 +5,7 @@ Created on Tue Feb  2 11:49:32 2021
 @author: druth
 """
 
-from point_bubble_JHTDB import model, analysis
+from point_bubble_JHTDB import classes, analysis, equations
 from point_bubble_JHTDB.velocity_fields import gaussian
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,13 +19,13 @@ vf = gaussian.RandomGaussianVelocityField(n_modes=12,u_rms=1,L_int=1)
 vf.init_field()
 
 # create the equation of motion
-mr = model.MaxeyRileyPointBubbleConstantCoefs()
+mr = equations.MaxeyRileyPointBubbleConstantCoefsVisc()
 
 # define parameters for the bubbles simulated
 bubble_params = {'d':0.1,
                 'g':2,
                 'Cm':0.5,
-                'Cd':1,
+                'nu':0.001,
                 'Cl':0.0}
 sim_params = {'n_bubs':20,
               'dt':1e-3,
@@ -34,7 +34,7 @@ sim_params = {'n_bubs':20,
               'fname':'example_simulation'}
               
 # create the simulation
-sim = model.Simulation(vf,bubble_params,sim_params,mr)
+sim = classes.Simulation(vf,bubble_params,sim_params,mr)
 
 # initialize it (involves choosing the 20 bubbles' initial positions and defining each's gravity direction)
 sim.init_sim()
@@ -42,12 +42,15 @@ sim.init_sim()
 # simulate the bubbles between the t_min and t_max specified in sim_params
 sim.run()
 
+
+
 # save the data to a file
-sim.save(folder+'example_simulation.pkl')
+#sim.save(folder+'example_simulation.pkl')
 
 # create a CompleteSim object to analyze the results
 # this rotates all vectors so the final entry of the last axis is parallel to gravity
-csim = analysis.CompleteSim(sim)
+csim = analysis.CompleteSim(sim,rotated=True)
+stophere
 
 # plot the mean vertical velocity of the bubbles against time
 # normalize time by the characteristic scale of the velocity field

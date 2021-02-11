@@ -140,9 +140,9 @@ class ViscousDragForce(Force):
         d = p['d']
         slip = p['slip']
         slip_norm = np.linalg.norm(slip,axis=-1)
-        Re = slip_norm * d / nu
+        Re = slip_norm * d / nu # [n_bub] or [n_t,n_bub]
         Cd = 24./Re
-        Cd = np.array([Cd]*3).T # [3] or [n_bub,3]
+        Cd = np.moveaxis(np.array([Cd]*3),0,-1) # [n_bub,3] or [n_t,n_bub,3]
         return calc_drag_force(slip,d,Cd)
 
 class ConstantCLLiftForce(Force):    
