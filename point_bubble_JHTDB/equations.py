@@ -163,6 +163,8 @@ Helper functions for calculating forces
 def calc_drag_force(slip,d,Cd):
     slip_mag = np.linalg.norm(slip,axis=-1)
     slip = np.moveaxis(slip,-1,0)
+    if len(np.shape(Cd))==2:
+        Cd = Cd.T
     drag = -1/8 * Cd * np.pi * d**2 * (slip*slip_mag)
     drag = np.moveaxis(drag,0,-1)
     return drag
