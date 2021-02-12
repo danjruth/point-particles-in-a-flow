@@ -35,10 +35,10 @@ class CompleteSim():
         self.T_vf = sim.velocity_field.T_char
             
         # nondimensional numbers
-        self.dstar = self.d / self.L_vf
+        #self.dstar = self.d / self.L_vf
         #self.dstar_by_Cd = self.dstar / self.Cd
-        self.beta = self.u_vf / self.v_q
-        self.Fr = self.u_vf / np.sqrt(self.d*self.g)
+        #self.beta = self.u_vf / self.v_q
+        #self.Fr = self.u_vf / np.sqrt(self.d*self.g)
         
         # get the forces and rotate everything so z is aligned with gravity for each bubble
         self._calc_forces(sim)
@@ -63,8 +63,9 @@ class CompleteSim():
         '''
         
         # gravity, for normalizing forces
-        vol = (sim.d/2.)**3 * 4./3 * np.pi
-        self.grav_z = sim.g * vol
+        if 'g' in sim.phys_params:
+            vol = (sim.d/2.)**3 * 4./3 * np.pi
+            self.grav_z = sim.g * vol
         
         # calculate forces over time
         p = {'u':sim.u,'v':sim.v,'dudt':sim.dudt,'velgrad':sim.velgrad}
@@ -189,9 +190,11 @@ def get_minmax_series(df,varx,vary):
         
     return x,low,high
     
-def get_hist(y,bins=1001):
+def get_hist(y,bins=1001,cumulative=False):
     '''return a normalized pdf and x locs of bin centers'''
     hist,edges = np.histogram(y[~np.isnan(y)],bins=bins,density=True)
+    if cumulative:
+        hist = np.cumsum(hist*np.diff(edges))
     return edges[:-1]+np.diff(edges)/2, hist
 
 def quiescent_speed(d,g,Cd):

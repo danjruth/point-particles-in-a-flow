@@ -290,10 +290,6 @@ class Simulation:
         '''
         
         self = assign_attributes(self,self.phys_params,self.sim_params)
-        try:
-            self.eom.set_m_eff(self)
-        except:
-            pass
         
         # initial setup
         self.t = np.arange(self.t_min,self.t_max,self.dt)

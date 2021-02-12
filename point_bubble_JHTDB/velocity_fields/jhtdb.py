@@ -61,7 +61,6 @@ JHTDB_DATASET_PARAMS = {'isotropic1024coarse':ISOTROPIC1024COARSE_PARAMS,
 class JHTDBVelocityField(VelocityField):
     
     def __init__(self,data_set='isotropic1024coarse'):
-        #VelocityField.__init__(self,name='JHTDB_'+data_set)
         super().__init__(name='JHTDB_'+data_set)
         self.data_set = data_set
         if lJHTDB_available:
@@ -72,6 +71,9 @@ class JHTDBVelocityField(VelocityField):
         # store the parameters for this dataset
         if data_set in JHTDB_DATASET_PARAMS:
             [setattr(self,key,JHTDB_DATASET_PARAMS[data_set][key]) for key in JHTDB_DATASET_PARAMS[data_set]]
+            
+        new_save_vars = list(JHTDB_DATASET_PARAMS[data_set].keys())
+        self._save_vars = self._save_vars + new_save_vars
             
     if lJHTDB_available:
         
@@ -106,3 +108,11 @@ class JHTDBVelocityField(VelocityField):
             u_tplusdeltat = self.get_velocity(t+delta_t,x,)
             dudt = (u_tplusdeltat - u_t) / delta_t
             return dudt
+        
+    else:
+        def get_velocity(self,t,x,):
+            return None
+        def get_velocity_gradient(self,t,x,lJHTDB=None):
+            return None
+        def get_dudt(self,t,x,u_t=None,delta_t=1e-4,lJHTDB=None):
+            return None
