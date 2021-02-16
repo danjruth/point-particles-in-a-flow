@@ -350,7 +350,6 @@ class Simulation:
         p = self._construct_update_dict(ti)
         v_new = self.eom(p,self.dt) # based on everything at this point in time
         x_new = self.x[ti,...]+v_new*self.dt
-        print(x_new[0,:])
         
         # for now, limit the x data to the values in eom.pos_lims
         for i in range(3):
@@ -364,11 +363,15 @@ class Simulation:
         self.dudt[ti+1,...] = p['dudt'].copy()
         self.velgrad[ti+1,...] = p['velgrad']
         
-    def run(self):
+    def run(self,save_every=100,fpath=None,disp=False):
         for ti in np.arange(self.ti,self.n_t-1,1):
-            print(ti)
+            if disp:
+                print('... time '+str(self.t[ti])+'/'+str(self.t_max))
             self._advance(ti)
             self.ti = ti
+            
+            if fpath is not None and ti%save_every==0:
+                self.save(fpath)
             
     def add_data(self,res,include_velfield=False):
         '''
