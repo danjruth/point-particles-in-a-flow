@@ -359,10 +359,15 @@ class Simulation:
         self.dudt[ti+1,...] = p['dudt'].copy()
         self.velgrad[ti+1,...] = p['velgrad']
         
-    def run(self):
+    def run(self,save_every=100,fpath=None,disp=False):
         for ti in np.arange(self.ti,self.n_t-1,1):
+            if disp:
+                print('... time '+str(self.t[ti])+'/'+str(self.t_max))
             self._advance(ti)
             self.ti = ti
+            
+            if fpath is not None and ti%save_every==0:
+                self.save(fpath)
             
     def add_data(self,res,include_velfield=False):
         '''
