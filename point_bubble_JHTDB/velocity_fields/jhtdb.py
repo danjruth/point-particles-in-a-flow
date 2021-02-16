@@ -58,27 +58,30 @@ CHANNEL_PARAMS['T_char'] = CHANNEL_PARAMS['L_char']/CHANNEL_PARAMS['u_char']
 JHTDB_DATASET_PARAMS = {'isotropic1024coarse':ISOTROPIC1024COARSE_PARAMS,
                         'channel':CHANNEL_PARAMS}
 
-# only define the velocity field class for this if the interface to the JHTDB
-# is available
-if lJHTDB_available:
+class JHTDBVelocityField(VelocityField):
     
-    class JHTDBVelocityField(VelocityField):
-        
-        def __init__(self,data_set='isotropic1024coarse'):
-            #VelocityField.__init__(self,name='JHTDB_'+data_set)
-            super().__init__(name='JHTDB_'+data_set)
-            self.data_set = data_set
+    def __init__(self,data_set='isotropic1024coarse'):
+        super().__init__(name='JHTDB_'+data_set)
+        self.data_set = data_set
+        if lJHTDB_available:
             self.lJHTDB = lJHTDB
+        else:
+            self.lJHTDB = None
+        
+        # store the parameters for this dataset
+        if data_set in JHTDB_DATASET_PARAMS:
+            [setattr(self,key,JHTDB_DATASET_PARAMS[data_set][key]) for key in JHTDB_DATASET_PARAMS[data_set]]
             
-            # store the parameters for this dataset
-            if data_set in JHTDB_DATASET_PARAMS:
-                [setattr(self,key,JHTDB_DATASET_PARAMS[data_set][key]) for key in JHTDB_DATASET_PARAMS[data_set]]                
+        new_save_vars = list(JHTDB_DATASET_PARAMS[data_set].keys())
+        self._save_vars = self._save_vars + new_save_vars
             
+    if lJHTDB_available:
+        
         def get_velocity(self,t,x,lJHTDB=None):
             if lJHTDB is None:
                 lJHTDB = self.lJHTDB
             return lJHTDB.getData(t, point_coords=x.copy().astype(np.float32), data_set=self.data_set, getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
-
+    
         def get_velocity_gradient(self,t,x,lJHTDB=None):
             
             if lJHTDB is None:
@@ -105,3 +108,11 @@ if lJHTDB_available:
             u_tplusdeltat = self.get_velocity(t+delta_t,x,)
             dudt = (u_tplusdeltat - u_t) / delta_t
             return dudt
+        
+    else:
+        def get_velocity(self,t,x,):
+            return None
+        def get_velocity_gradient(self,t,x,lJHTDB=None):
+            return None
+        def get_dudt(self,t,x,u_t=None,delta_t=1e-4,lJHTDB=None):
+            return None
