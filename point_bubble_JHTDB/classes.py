@@ -346,7 +346,6 @@ class Simulation:
         p = self._construct_update_dict(ti)
         v_new = self.eom(p,self.dt) # based on everything at this point in time
         x_new = self.x[ti,...]+v_new*self.dt
-        print(x_new[0,:])
         
         # for now, limit the x data to the values in eom.pos_lims
         for i in range(3):
@@ -362,7 +361,6 @@ class Simulation:
         
     def run(self):
         for ti in np.arange(self.ti,self.n_t-1,1):
-            print(ti)
             self._advance(ti)
             self.ti = ti
             
@@ -393,3 +391,34 @@ class Simulation:
         res = self.to_dict()
         res['velfield_params'] = self.velocity_field.to_dict()
         data.save_obj(res,fpath)
+        
+class TestConvergence:
+    '''Class to test the effect of dt by creating multiple Simulations, each 
+    differing only in dt.
+    '''
+    
+    def __init__(self,velocity_field,phys_params,sim_params,eom,dt_vals):
+        
+        self.velocity_field = velocity_field
+        self.phys_params = phys_params
+        self.sim_params = sim_params
+        self.eom = eom
+        self.dt_vals = dt_vals
+        
+        sims = []
+        for i,dt in enumerate(dt_vals):
+            sim_params_dt = sim_params.copy()
+            sim_params['dt'] = dt
+            sim = Simulation(velocity_field,phys_params,sim_params_dt,eom)
+            sim.init_sim()
+            if i>0:
+                sim.x[0,...] = sims[0].x[0,...]
+                sim.g_dir = sims[0].g_dir
+                sim.v[0,...] = sims[0].v[0,...]
+            sims.append(sim)
+        self.sims = sims
+        
+    def run_all(self):
+        [sim.run() for sim in self.sims]
+        self.complete_sims = {dt:analysis.CompleteSim(sim) for dt,sim in zip(self.dt_vals,self.sims)}
+        
