@@ -33,6 +33,18 @@ inertial = {}
 visc =  {}
 start_ix = 400 # t=2 given dt = 0.005
 
+def load_inertial_and_visc(Fr,i):
+    res = []
+    mr_inertial = equations.MaxeyRileyPointBubbleConstantCoefs()
+    mr_visc = equations.MaxeyRileyPointBubbleConstantCoefsVisc()
+    for name_start,mr in zip(['gaussian_inertial_Fr','gaussian_visc_Fr'],[mr_inertial,mr_visc]):
+        d,g = analysis.dg_given_nondim(Fr, dstar, vf.u_char, vf.L_char)
+        sim_inertial = pb.Simulation(vf,{},{},mr)
+        sim_inertial.add_data(folder+name_start+'{:03.4f}'.format(Fr)+'_dstar'+'{:03.4f}'.format(Fr)+'_v'+str(i)+'.pkl')
+        a = analysis.CompleteSim(sim_inertial)
+        res.append(a)
+    return res
+
 for Fr,n_sim in zip(Fr_vec,n_sim_vec):
         
     vf = gaussian.RandomGaussianVelocityField(n_modes=64,u_rms=1,L_int=1)
@@ -42,16 +54,10 @@ for Fr,n_sim in zip(Fr_vec,n_sim_vec):
     
     def load_case(i):
         
-        res = {}
-        mr_inertial = equations.MaxeyRileyPointBubbleConstantCoefs()
-        mr_visc = equations.MaxeyRileyPointBubbleConstantCoefsVisc()
-        res = []
-        for name_start,mr in zip(['gaussian_inertial_Fr','gaussian_visc_Fr'],[mr_inertial,mr_visc]):
-            d,g = analysis.dg_given_nondim(Fr, dstar, vf.u_char, vf.L_char)
-            sim_inertial = pb.Simulation(vf,{},{},mr)
-            sim_inertial.add_data(folder+name_start+'{:03.4f}'.format(Fr)+'_dstar'+'{:03.4f}'.format(Fr)+'_v'+str(i)+'.pkl')
-            a = analysis.CompleteSim(sim_inertial)
+        complete_sims = load_inertial_and_visc(Fr,i)
         
+        res = []
+        for a in complete_sims:        
             a_res = dict(v_q=a.v_q,
                          grav_z=a.grav_z,
                          d=a.d,
@@ -134,3 +140,57 @@ axs[1,1].set_ylabel('std. speed $/F_\mathrm{b}$')
     
 fig.tight_layout()
 fig.savefig(figfolder+'inertial_vs_viscous_gaussian_speeds_forces.pdf')
+
+
+'''
+Single condition distribution of velocities
+'''
+
+Fr = 3
+n_sim = 40
+def get_case_arrays(i):
+    complete_sims = load_inertial_and_visc(Fr,i)
+    arrs = []
+    for a in complete_sims:
+        d = dict(uz=a['u'][start_ix:,:,2].flatten(),
+                 vz=a['v'][start_ix:,:,2].flatten(),
+                 dragz=a['drag'][start_ix:,:,2].flatten(),
+                 pressz=a['press'][start_ix:,:,2].flatten(),
+                 )
+        arrs.append(d)
+    return arrs
+
+complete_sims = load_inertial_and_visc(Fr,0)
+
+arrss = toolkit.parallel.parallelize_job(get_case_arrays,range(n_sim))
+arrs_inertial = [arrs[0] for arrs in arrss]
+arrs_visc = [arrs[1] for arrs in arrss]
+
+arrs_inertial = {key:np.concatenate([arrs[key] for arrs in arrs_inertial]) for key in arrs_inertial[0]}
+arrs_visc = {key:np.concatenate([arrs[key] for arrs in arrs_visc]) for key in arrs_visc[0]}
+
+fig,ax = plt.subplots()
+for arrs,a,ls in zip([arrs_inertial,arrs_visc],complete_sims,['-','--']):
+    
+    # v_z
+    x,y = analysis.get_hist(arrs['vz']/a.v_q,bins=501)
+    ax.semilogy(x,y,color='r',ls=ls)
+    
+    # u_z
+    x,y = analysis.get_hist(arrs['uz']/a.v_q,bins=501)
+    ax.semilogy(x,y,color='b',ls=ls)
+    
+    # slip_z
+    x,y = analysis.get_hist((arrs['vz']-arrs['uz'])/a.v_q,bins=501)
+    ax.semilogy(x,y,color='cyan',ls=ls)
+    
+fig,ax = plt.subplots()
+for arrs,a,ls in zip([arrs_inertial,arrs_visc],complete_sims,['-','--']):
+    
+    # drag
+    x,y = analysis.get_hist(arrs['dragz']/a.grav_z,bins=501)
+    ax.semilogy(x,y,color='orange',ls=ls)
+    
+    # pressure
+    x,y = analysis.get_hist(arrs['pressz']/a.grav_z,bins=501)
+    ax.semilogy(x,y,color='purple',ls=ls)
