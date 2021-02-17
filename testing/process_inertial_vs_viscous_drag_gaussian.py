@@ -146,8 +146,8 @@ fig.savefig(figfolder+'inertial_vs_viscous_gaussian_speeds_forces.pdf')
 Single condition distribution of velocities
 '''
 
-Fr = 3
-n_sim = 40
+Fr = 12
+n_sim = 50
 def get_case_arrays(i):
     complete_sims = load_inertial_and_visc(Fr,i)
     arrs = []
@@ -160,37 +160,73 @@ def get_case_arrays(i):
         arrs.append(d)
     return arrs
 
-complete_sims = load_inertial_and_visc(Fr,0)
+fig,axs = plt.subplots(2,2,figsize=(9,7))
+Fr_vals = [0.5,10]
+n_sims = [15,50]
 
-arrss = toolkit.parallel.parallelize_job(get_case_arrays,range(n_sim))
-arrs_inertial = [arrs[0] for arrs in arrss]
-arrs_visc = [arrs[1] for arrs in arrss]
+for Fr,n_sim,axi in zip(Fr_vals,n_sims,[0,1]):
 
-arrs_inertial = {key:np.concatenate([arrs[key] for arrs in arrs_inertial]) for key in arrs_inertial[0]}
-arrs_visc = {key:np.concatenate([arrs[key] for arrs in arrs_visc]) for key in arrs_visc[0]}
+    
+    complete_sims = load_inertial_and_visc(Fr,0)
+    
+    arrss = toolkit.parallel.parallelize_job(get_case_arrays,range(n_sim))
+    arrs_inertial = [arrs[0] for arrs in arrss]
+    arrs_visc = [arrs[1] for arrs in arrss]
+    
+    arrs_inertial = {key:np.concatenate([arrs[key] for arrs in arrs_inertial]) for key in arrs_inertial[0]}
+    arrs_visc = {key:np.concatenate([arrs[key] for arrs in arrs_visc]) for key in arrs_visc[0]}
 
-fig,ax = plt.subplots()
-for arrs,a,ls in zip([arrs_inertial,arrs_visc],complete_sims,['-','--']):
+    # plot velocity distirubitons
+    ax = axs[0,axi]
+    for arrs,a,ls in zip([arrs_inertial,arrs_visc],complete_sims,['-','--']):
+        
+        # v_z
+        x,y = analysis.get_hist(arrs['vz']/a.v_q,bins=101)
+        ax.semilogy(x,y,color='k',ls=ls)
+        
+        # u_z
+        x,y = analysis.get_hist(arrs['uz']/a.v_q,bins=101)
+        ax.semilogy(x,y,color='b',ls=ls)
+        
+        # slip_z
+        x,y = analysis.get_hist((arrs['vz']-arrs['uz'])/a.v_q,bins=101)
+        ax.semilogy(x,y,color='g',ls=ls)
+        
+    ax.set_xlabel('speed $/ v_\mathrm{q}$ [-]')
+    ax.set_ylabel('PDF [-]')
+        
+    # plot force distributions
+    ax = axs[1,axi]
+    for arrs,a,ls in zip([arrs_inertial,arrs_visc],complete_sims,['-','--']):
     
-    # v_z
-    x,y = analysis.get_hist(arrs['vz']/a.v_q,bins=501)
-    ax.semilogy(x,y,color='r',ls=ls)
+        # drag
+        x,y = analysis.get_hist(arrs['dragz']/a.grav_z,bins=101)
+        ax.semilogy(x,y,color='orange',ls=ls)
+        
+        # pressure
+        x,y = analysis.get_hist(arrs['pressz']/a.grav_z,bins=101)
+        ax.semilogy(x,y,color='purple',ls=ls)
+        
+        # sum
+        x,y = analysis.get_hist((arrs['dragz']+arrs['pressz'])/a.grav_z,bins=101)
+        ax.semilogy(x,y,color='gray',ls=ls)
     
-    # u_z
-    x,y = analysis.get_hist(arrs['uz']/a.v_q,bins=501)
-    ax.semilogy(x,y,color='b',ls=ls)
+    ax.set_xlabel('force $/ F_\mathrm{b}$ [-]')
+    ax.set_ylabel('PDF [-]')
+        
+    axs[0,axi].set_title('$\mathrm{Fr}='+str(Fr)+'$')
     
-    # slip_z
-    x,y = analysis.get_hist((arrs['vz']-arrs['uz'])/a.v_q,bins=501)
-    ax.semilogy(x,y,color='cyan',ls=ls)
+#fig.tight_layout()
     
-fig,ax = plt.subplots()
-for arrs,a,ls in zip([arrs_inertial,arrs_visc],complete_sims,['-','--']):
-    
-    # drag
-    x,y = analysis.get_hist(arrs['dragz']/a.grav_z,bins=501)
-    ax.semilogy(x,y,color='orange',ls=ls)
-    
-    # pressure
-    x,y = analysis.get_hist(arrs['pressz']/a.grav_z,bins=501)
-    ax.semilogy(x,y,color='purple',ls=ls)
+axs[0,0].plot(np.nan,np.nan,'-',lw=5,color='k',label=r'$v_z$')
+axs[0,0].plot(np.nan,np.nan,'-',lw=5,color='b',label=r'$u_z$')
+axs[0,0].plot(np.nan,np.nan,'-',lw=5,color='g',label=r'$v_z - u_z$')
+axs[0,0].legend(frameon=False)
+
+axs[1,0].plot(np.nan,np.nan,'-',lw=5,color='orange',label=r'$F_{\mathrm{drag},z}$')
+axs[1,0].plot(np.nan,np.nan,'-',lw=5,color='purple',label=r'$F_{\mathrm{press},z}$')
+axs[1,0].plot(np.nan,np.nan,'-',lw=5,color='gray',label=r'$F_{\mathrm{drag},z}+F_{\mathrm{press},z}$')
+axs[1,0].legend(frameon=False)
+
+fig.tight_layout()
+fig.savefig(figfolder+'inertial_vs_viscous_gaussian_speeds_forces_distributions.pdf')
