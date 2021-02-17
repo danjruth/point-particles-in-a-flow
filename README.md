@@ -6,7 +6,9 @@ Simulate the motion of point-like particles in a flow.
 
 The main class is the `Simulation`, which encapsulates one simulation of any number of point-like particles in a single flow. The `Simulation` relies on a `VelocityField` and an `EquationOfMotion`, all of which are defined in `model.py`.
 
-### Velocity fields
+
+### Velocity Fields
+
 Derived classes of `VelocityField` include
 * `JHTDBVelocityField`, which employs the [`pyJHTDB`](https://github.com/idies/pyJHTDB) package to access the direct numerical simulations of turbulence available from the Johns Hopkins Turbulence Database
 * `RandomGaussianVelocityField`, which constructs a field composed of a number of space- and time-dependent Fourier modes, with amplitudes, wavenumbers, and frequencies picked from random distributions
