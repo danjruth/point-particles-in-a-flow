@@ -6,7 +6,7 @@ Created on Tue Feb  9 15:11:13 2021
 """
 
 import numpy as np
-from point_bubble_JHTDB import EquationOfMotion, Force
+from pointparticlesinaflow import EquationOfMotion, Force
 
 '''
 Classes for equations of motion

@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-setup(name='point_bubble_JHTDB',
+setup(name='pointparticlesinaflow',
       packages=find_packages(),
       install_requires=[],
       )

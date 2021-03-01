@@ -7,8 +7,6 @@ Created on Sun Jul 19 11:55:39 2020
 
 import numpy as np
 import pickle
-#import point_bubble_JHTDB.classes
-#import point_bubble_JHTDB.equations
 from . import classes
 import pandas as pd
 

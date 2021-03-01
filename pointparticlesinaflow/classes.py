@@ -8,7 +8,7 @@ Created on Mon Jun 29 14:59:40 2020
 import numpy as np
 import pickle
 from scipy.spatial.transform import Rotation
-from point_bubble_JHTDB import data, analysis
+from pointparticlesinaflow import data, analysis
 #from .equations import quiescent_speed
 
 '''
