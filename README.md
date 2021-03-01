@@ -24,8 +24,8 @@ The `EquationOfMotion` is used to update the particles' velocities, given their 
 ### Create a Gaussian velocity field and simulation using the Maxey-Riley equation for a point bubble
 
 ```python
-from point_bubble_JHTDB import model, analysis
-from point_bubble_JHTDB.velocity_fields import gaussian
+from pointparticlesinaflow import model, analysis
+from pointparticlesinaflow.velocity_fields import gaussian
 import matplotlib.pyplot as plt
 
 # create the velocity field
