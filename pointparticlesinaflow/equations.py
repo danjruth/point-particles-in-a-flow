@@ -167,6 +167,9 @@ def calc_drag_force(slip,d,Cd):
     slip = np.moveaxis(slip,-1,0)
     if len(np.shape(Cd))>1:
         Cd = np.moveaxis(Cd,-1,0)
+    #print(np.shape(Cd))
+    #print(np.shape(slip))
+    #print(np.shape(slip_mag))
     drag = -1/8 * Cd * np.pi * d**2 * (slip*slip_mag)
     drag = np.moveaxis(drag,0,-1)
     return drag
@@ -196,4 +199,8 @@ def calc_Cd_Snyder(Re):
     Cd[Re>=1] = (24./Re[Re>=1]) * (1 + (3.6/Re[Re>=1]**0.313)*((Re[Re>=1]-1)/19)**2)
     Cd[Re>=20] = (24./Re[Re>=20]) * (1 + 0.15*Re[Re>=20]**0.687)
     Cd[Re==0] = 1 # value doesn't matter, just can't be nan or inf
+    
+    # give it a "component" axis
+    Cd = np.moveaxis([Cd]*3,0,-1) # [bub,component] or [time,bub,component]
+    
     return Cd

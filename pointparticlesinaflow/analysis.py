@@ -216,7 +216,7 @@ def nu_given_Req(d,g,Cd_q,Re_q):
     '''calculate viscosity given the quiescent parameters
     '''
     v_q = quiescent_speed(d,g,Cd_q)
-    nu = d*v_q / Re_q
+    nu = d*v_q / Re_q # nu = d * sqrt(dg/Cd_q) / Re_q
     return nu
 
 def nu_given_quiescent_visc(d,g,v_q):

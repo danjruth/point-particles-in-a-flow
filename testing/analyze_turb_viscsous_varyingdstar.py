@@ -7,8 +7,8 @@ Created on Fri Feb 12 09:53:48 2021
 
 import numpy as np
 import matplotlib.pyplot as plt
-from point_bubble_JHTDB import classes, analysis, equations
-from point_bubble_JHTDB.velocity_fields import jhtdb
+from pointparticlesinaflow import classes, analysis, equations
+from pointparticlesinaflow.velocity_fields import jhtdb
 import toolkit.parallel
 import pandas as pd
 

@@ -5,9 +5,9 @@ Created on Tue Feb  9 10:53:31 2021
 @author: druth
 """
 
-import point_bubble_JHTDB as pb
-from point_bubble_JHTDB import analysis, equations
-from point_bubble_JHTDB.velocity_fields import gaussian
+import pointparticlesinaflow as pb
+from pointparticlesinaflow import analysis, equations
+from pointparticlesinaflow.velocity_fields import gaussian
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
