@@ -269,6 +269,24 @@ def assign_attributes(obj,phys_params,sim_params):
     return obj
 
 class Simulation:
+    '''
+    Main class for the simulation of point particles in flows.
+    
+    Parameters
+    ----------
+    
+    velocity_field : pointparticlesinaflow.classes.VelocityField
+        The velocity field to use for the simulations
+        
+    phys_params : dict
+        The physical parameters of the simulation.
+        
+    sim_params : dict
+        Parameters to use for the simulation
+        
+    eom : pointparticlesinaflow.classes.EquationOfMotion
+        The equation of motion to use for the point particles.
+    '''
     
     _save_vars = ['phys_params','sim_params','_save_vars',
                   'g_dir',
@@ -287,6 +305,26 @@ class Simulation:
         Initialize the simulation. Should only be called when the simulation is
         first created, not when it's being reloaded from some intermediate
         point. In that case, use add_data().
+        
+        Parameters
+        ----------
+        
+        g_dir : str or np.ndarray
+            The gravitational direction. If 'random', it is chosen randomly. If
+            '-x', '-y', or '-z', it is antiparallel to either the x, y, or z
+            axis. If np.ndarray, the direction of gravity for each bubble, with
+            shape (n_bubs,3).
+            
+        pos_lims : tuple
+            The spatial limits of the simulation, as
+            ((min_x,min_y,min_z),(max_x,max_y,max_z)).
+            
+        vz_0 : float or str
+            If float, the vertical component of the initial velocity. If 'v_q',
+            the quiescent rise velocity is used (upwards, positive z); if
+            '-v_q', the quiescent settling velocity (downwards, negative z) is
+            used. The intial velocity can be changed to other values by 
+            updating the .v attribute after init_sim() is called.      
         '''
         
         self = assign_attributes(self,self.phys_params,self.sim_params)
@@ -304,12 +342,14 @@ class Simulation:
             vz_0 = self.v_q * -1
         
         # define the direction of gravity for each bubble
-        if g_dir == 'random':
-            self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:]
         gdir_dict = {'-x':0,'-y':1,'-z':2}
-        if g_dir in gdir_dict:
+        if g_dir == 'random':
+            self.g_dir = np.array([Rotation.random(1).apply([0,0,1]) for _ in range(n_bubs)])[:,0,:]        
+        elif g_dir in gdir_dict:
             self.g_dir = np.zeros((n_bubs,3))
             self.g_dir[:,gdir_dict[g_dir]] = -1
+        else:
+            self.g_dir = g_dir
         
         self.x = np.zeros((n_t,n_bubs,3))
         self.u = np.zeros((n_t,n_bubs,3))
@@ -342,6 +382,10 @@ class Simulation:
         return p
         
     def _advance(self,ti):
+        '''
+        Advance the simulation one timestep (to timestep ti) using forward
+        Euler integration.
+        '''
         
         p = self._construct_update_dict(ti)
         v_new = self.eom(p,self.dt) # based on everything at this point in time
@@ -357,9 +401,24 @@ class Simulation:
         self.v[ti+1,...] = v_new.copy()
         self.x[ti+1,...] = x_new.copy()
         self.dudt[ti+1,...] = p['dudt'].copy()
-        self.velgrad[ti+1,...] = p['velgrad']
+        self.velgrad[ti+1,...] = p['velgrad'].copy()
         
     def run(self,save_every=100,fpath=None,disp=False):
+        '''
+        Run the simulation, starting from the current timestep stored in .ti.
+        
+        Parameters
+        ----------
+        
+        save_every : int
+            The number of timesteps between each time .save() is called.
+            
+        fpath : str
+            The filepath at which to save the simulation.
+            
+        disp : bool
+            Whether or not to print out the timestep every timestep.
+        '''
         for ti in np.arange(self.ti,self.n_t-1,1):
             if disp:
                 print('... time '+str(self.t[ti])+'/'+str(self.t_max))

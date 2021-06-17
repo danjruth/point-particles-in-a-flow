@@ -11,6 +11,23 @@ from . import classes
 import pandas as pd
 
 class CompleteSim():
+    '''
+    Class for the analysis of a completed simulation.
+    
+    Parameters
+    ----------
+    
+    sim : pontparticlesinaflow.classes.Simulation
+        The simulation that has been run or re-loaded.
+        
+    norm : bool
+        Whether or not quantities are normalized by characteristic values when
+        returned.
+        
+    rotated : bool
+        Whether or not the coordinate system of each particle is rotated such
+        that the z direction is anti-parallel to the gravity direction.
+    '''
     
     def __init__(self,sim,norm=False,rotated=True):
         
@@ -31,12 +48,6 @@ class CompleteSim():
         self.u_vf = sim.velocity_field.u_char
         self.L_vf = sim.velocity_field.L_char
         self.T_vf = sim.velocity_field.T_char
-            
-        # nondimensional numbers
-        #self.dstar = self.d / self.L_vf
-        #self.dstar_by_Cd = self.dstar / self.Cd
-        #self.beta = self.u_vf / self.v_q
-        #self.Fr = self.u_vf / np.sqrt(self.d*self.g)
         
         # get the forces and rotate everything so z is aligned with gravity for each bubble
         self._calc_forces(sim)
