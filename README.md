@@ -4,7 +4,7 @@ Simulate the motion of point-like particles in a flow.
 
 ## Overview
 
-The main class is the `Simulation`, which encapsulates one simulation of any number of point-like particles in a single flow. The `Simulation` relies on a `VelocityField` and an `EquationOfMotion`, all of which are defined in `model.py`.
+The main class is the `Simulation`, which encapsulates one simulation of any number of point-like particles in a single flow. The `Simulation` relies on a `VelocityField` and an `EquationOfMotion`, all of which are defined in `classes.py`.
 
 
 ### Velocity Fields
