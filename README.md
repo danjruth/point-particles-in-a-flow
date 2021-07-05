@@ -88,3 +88,7 @@ sim_reloaded.add_data('example_simulation.pkl', include_velfield=True)
 
 # sim_reloaded.run() can be called to restart the simulation if it wasn't complete upon saving
 ```
+
+## Installation
+
+Clone the package to your computer, then run `pip install -e .` .
