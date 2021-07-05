@@ -4,20 +4,22 @@ Simulate the motion of point-like particles in a flow.
 
 ## Overview
 
-The main class is the `Simulation`, which encapsulates one simulation of any number of point-like particles in a single flow. The `Simulation` relies on a `VelocityField` and an `EquationOfMotion`, all of which are defined in `classes.py`.
+The main class is the `Simulation`, which encapsulates one simulation of any number of point-like particles in a single flow. The `Simulation` relies on a `VelocityField` and an `EquationOfMotion`, all of which are defined in `classes.py`. Each `EquationOfMotion` is comprised of a list of `Force` objects describing individual forces acting on a bubble. The `CompleteSim` class is used for analyzing simulation results once the simulation is complete.
 
 
-### Velocity Fields
+### Velocity fields
 
 Derived classes of `VelocityField` include
-* `JHTDBVelocityField`, which employs the [`pyJHTDB`](https://github.com/idies/pyJHTDB) package to access the direct numerical simulations of turbulence available from the Johns Hopkins Turbulence Database
-* `RandomGaussianVelocityField`, which constructs a field composed of a number of space- and time-dependent Fourier modes, with amplitudes, wavenumbers, and frequencies picked from random distributions
+* [`JHTDBVelocityField`](pointparticlesinaflow/velocity_fields/jhtdb.py), which employs the [`pyJHTDB`](https://github.com/idies/pyJHTDB) package to access the direct numerical simulations of turbulence available from the Johns Hopkins Turbulence Database
+* [`RandomGaussianVelocityField`](pointparticlesinaflow/velocity_fields/gaussian.py), which constructs a field composed of a number of space- and time-dependent Fourier modes, with amplitudes, wavenumbers, and frequencies picked from random distributions
+* [`SteadyPlanarPoiseuilleFlow`](pointparticlesinaflow/velocity_fields/two_dimensional.py), which is a 2D steady flow between with a parabolic velocity profile.
 
 
 ### Equations of motion
 The `EquationOfMotion` is used to update the particles' velocities, given their current velocities and the flow conditions they experience. Derived classes of `EquationOfMotion` include
 * `LagrangianEOM`, which is used to obtain Lagrangian fluid parcel trajectories by simply setting the particle velocity `v` equal to the fluid velocity `u` at the particle location
-* `MaxeyRileyPointBubbleConstantCoefs`, which applies the Maxey-Riley equation simplified for a bubble in a much denser liquid, with constant lift, drag, and added-mass coefficients
+* `MaxeyRileyPointBubbleConstantCoefs`, which applies the Maxey-Riley equation simplified for a bubble experiencing quadratic drag in a much denser liquid, with constant lift, drag, and added-mass coefficients
+* `MaxeyRileyPointBubbleConstantCoefsVisc`, which is the same as above but with a viscous (linear) drag force
 
 ## Example usage
 
@@ -37,12 +39,14 @@ vf.init_field()
 # create the equation of motion
 mr = MaxeyRileyPointBubbleConstantCoefs()
 
-# define parameters for the bubbles simulated
+# define parameters for the bubbles simulated (specific to the EquationOfMotion used)
 bubble_params = {'d':0.1,
                 'g':2,
                 'Cm':0.5,
                 'Cd':1,
                 'Cl':0.0}
+                
+# define the simulation parameters
 sim_params = {'n_bubs':20,
               'dt':1e-3,
               't_min':0,
