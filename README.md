@@ -24,16 +24,18 @@ The `EquationOfMotion` is used to update the particles' velocities, given their 
 ### Create a Gaussian velocity field and simulation using the Maxey-Riley equation for a point bubble
 
 ```python
-from pointparticlesinaflow import model, analysis
+import pointparticlesinaflow as ppart
+from pointparticlesinaflow.equations import MaxeyRileyPointBubbleConstantCoefs
 from pointparticlesinaflow.velocity_fields import gaussian
 import matplotlib.pyplot as plt
+import numpy as np
 
 # create the velocity field
 vf = gaussian.RandomGaussianVelocityField(n_modes=12,u_rms=1,L_int=1)
 vf.init_field()
 
 # create the equation of motion
-mr = model.MaxeyRileyPointBubbleConstantCoefs()
+mr = MaxeyRileyPointBubbleConstantCoefs()
 
 # define parameters for the bubbles simulated
 bubble_params = {'d':0.1,
@@ -48,7 +50,7 @@ sim_params = {'n_bubs':20,
               'fname':'example_simulation'}
               
 # create the simulation
-sim = model.Simulation(vf,bubble_params,sim_params,mr)
+sim = ppart.Simulation(vf,bubble_params,sim_params,mr)
 
 # initialize it (involves choosing the 20 bubbles' initial positions and defining each's gravity direction)
 sim.init_sim()
@@ -65,13 +67,14 @@ sim.save('example_simulation.pkl')
 
 # create a CompleteSim object to analyze the results
 # this rotates all vectors so the final entry of the last axis is parallel to gravity
-csim = analysis.CompleteSim(sim)
+csim = ppart.CompleteSim(sim)
 
 # plot the mean vertical velocity of the bubbles against time
 # normalize time by the characteristic scale of the velocity field
 # normalize velocities by the quiescent velocity of the bubble
 fig,ax = plt.subplots()
 ax.plot(csim['t']/csim.T_vf,np.mean(csim['v'][:,:,2],axis=1))
+ax.fill_between(csim['t']/csim.T_vf,np.mean(csim['v'][:,:,2],axis=1)-np.std(csim['v'][:,:,2],axis=1)/2,np.mean(csim['v'][:,:,2],axis=1)+np.std(csim['v'][:,:,2],axis=1)/2,alpha=0.2)
 ax.set_xlabel(r'$t/T_\mathrm{velocityfield}$')
 ax.set_ylabel(r'$\langle v_z \rangle / v_\mathrm{q}$')
 ```
@@ -81,7 +84,7 @@ ax.set_ylabel(r'$\langle v_z \rangle / v_\mathrm{q}$')
 ```python
 # initialize the object with a stand-in velocity field of the same type that is to be loaded
 # the EOM must be specified again (it can't be saved easily), but the parameters aren't necessary
-sim_reloaded = model.Simulation(gaussian.RandomGaussianVelocityField(),{},{},mr)
+sim_reloaded = ppart.Simulation(gaussian.RandomGaussianVelocityField(),{},{},mr)
 
 # add the data that was saved
 sim_reloaded.add_data('example_simulation.pkl', include_velfield=True)
