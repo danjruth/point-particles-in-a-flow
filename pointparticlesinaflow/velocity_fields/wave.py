@@ -92,7 +92,3 @@ class LinearDeepWave(VelocityField):
         dwdt = pref * omega * np.cos(k*x[...,0]-omega*t) * -1
         
         return np.array([dudt,dvdt,dwdt]).T
-    
-if __name__=='__main__':
-    
-    vf = LinearDeepWave(a=0.5,k=8)
