@@ -216,59 +216,76 @@ class EquationOfMotion:
     def __init__(self,name='no_forces',forces=[]):
         self.name = name
         self.forces = forces
-        # store info about the forces involved
-        c = [f.const_params for f in self.forces]
-        self.const_params = list({x for l in c for x in l})
+        
+        # get list of particle params involved in each force
+        p = [f.pkeys for f in self.forces]
+        
+        self.p = list({x for l in p for x in l})
         self.force_names = [f.name for f in self.forces]
         self.force_short_names = [f.short_name for f in self.forces]
     
-    def calc_m_eff(self,p):
+    def calc_m_eff(self,r):
         '''Calculate the effective particle mass by which to divide the sum of
         the forces in order to calculate the particle acceleration.
         '''
         return np.nan
         
-    def _pre_calculations(self,p):
-        '''update the dict p by performing some calculations on it (ie adding
+    def _pre_calculations(self,r):
+        '''update the dict r by performing some calculations on it (ie adding
         an entry "vort" which is the vorticity, based on the entry "velgrad")
         '''
-        return p
+        return r
     
-    def __call__(self,p,dt):
-        p = self._pre_calculations(p)
-        sum_forces = np.sum([f(p) for f in self.forces],axis=0)
-        a = sum_forces / self.calc_m_eff(p)
-        return p['v']+a*dt
+    def __call__(self,r,dt):
+        r = self._pre_calculations(r)
+        sum_forces = np.sum([f(r) for f in self.forces],axis=0)
+        a = sum_forces / self.calc_m_eff(r)
+        return r['v']+a*dt
     
 '''
 Class for a simulation
 '''
 
-def assign_attributes(obj,phys_params,sim_params):
-    '''
-    Make the keys in phys_params and sim_params attributes of obj, and add
-    on additional computed attirbutes.
-    '''
-    
-    # extract physical parameters
-    for key in phys_params:
-        setattr(obj,key,phys_params[key])
-    
-    # set the inertial quiescent speed, if appropriate
-    if all(x in list(phys_params.keys()) for x in ['d','g','Cd']):
-        obj.v_q = analysis.quiescent_speed(obj.d,obj.g,obj.Cd)
-        
-    # set the viscous quiescent speed, if appropriate
-    if all(x in list(phys_params.keys()) for x in ['d','g','nu']):
-        obj.v_q = analysis.quiescent_speed_visc(obj.d,obj.g,obj.nu)
-    
-    # extract simulation parameters
-    for key in sim_params:
-        setattr(obj,key,sim_params[key])
-        
-    return obj
-
 class Simulation:
+    
+    def __init__(self,velocity_field,equation_of_motion,particle_params,simulation_params,):
+        
+        self.vf = velocity_field
+        self.eom = equation_of_motion
+        self.p = particle_params
+        self.s = simulation_params
+        
+    @property
+    def pkeys(self):
+        return list(self.p.keys())
+        
+    def init_sim(self):
+        
+        self.t = np.arange(self.s['t_min'],self.s['t_max'],self.s['dt'])
+        self.s['n_t'] = len(self.t)
+        self.ti = 0
+        
+        # positions and velocities of particles
+        self.x = np.zeros((self.s['n_t'],self.s['n'],3)).astype(float)
+        self.v = np.zeros_like(self.x)
+        
+        # velocity field
+        self.u = np.zeros_like(self.x)
+        self.dudt = np.zeros_like(self.x)
+        self.velgrad = np.zeros((self.s['n_t'],self.s['n'],3,3))
+
+    def _advance(self,ti):
+        
+        fs = self.vf.get_field_state(self.t[ti],self.x[ti,...])
+        
+        # add entries to r
+        r = {'v':self.v[ti,...]}
+        for key in ['u','dudt','velgrad',]:
+            r[key] = getattr(fs,key)
+        for key in self.eom.p:
+            r[key] = getattr(self.p,key)
+
+class SimulationOld:
     '''
     Main class for the simulation of point particles in flows.
     

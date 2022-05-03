@@ -112,12 +112,15 @@ class GravForceBubble(Force):
 class ConstantCDDragForce(Force):    
     def __init__(self):
         super().__init__(name='constant_CD_drag',short_name='drag')
-        self.const_params = ['d','Cd']
-    def __call__(self,p):
-        Cd = p['Cd']
-        d = p['d']
-        slip = p['slip']
-        return calc_drag_force(slip,d,Cd)
+        self.pkeys = ['d','Cd']
+    def __call__(self,r):
+        Cd = r['Cd']
+        d = r['d']
+        slip = r['slip'] # [n_particles,3]        
+        slip_mag = np.linalg.norm(slip,axis=-1)
+        slip = np.moveaxis(slip,-1,0)
+        drag = -1/8 * Cd * np.pi * d**2 * (slip*slip_mag)        
+        return drag
     
 class DragForceSnyder2007(Force):    
     def __init__(self):
