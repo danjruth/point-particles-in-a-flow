@@ -81,13 +81,24 @@ class LagrangianEOM(EquationOfMotion):
         return p['u']
     
 '''
+Helper, pre-calculation functions
+'''
+def _calc_slip(r):
+    r['slip'] = r['v']-r['u']
+    return r
+
+def _calc_vort(r):
+    r['vort'] = get_vorticity(r['velgrad'])
+    return r
+
+'''
 Forces
 '''
 
 class PressureForceBubble(Force):    
     def __init__(self):
         super().__init__(name='pressure_bubble',short_name='press')
-        self.const_params = ['d','Cm']
+        self.pkeys = ['d','Cm']
     def __call__(self,p):
         u = p['u']
         velgrad = p['velgrad']
@@ -96,13 +107,14 @@ class PressureForceBubble(Force):
         Cm = p['Cm']
         u_times_deldotu = np.array([np.sum(velgrad[...,i,:]*u,axis=-1) for i in range(3)])
         u_times_deldotu = np.moveaxis(u_times_deldotu,0,-1)
-        press = (1+Cm) * (d/2)**3*4./3*np.pi * (dudt + u_times_deldotu)
+        press = (1+Cm) * (d/2)**3*4./3*np.pi * np.moveaxis((dudt + u_times_deldotu),0,-1)
+        press = np.moveaxis(press,-1,0)
         return press
 
 class GravForceBubble(Force):    
     def __init__(self):
         super().__init__(name='grav_bubble',short_name='grav')
-        self.const_params = ['d','g_dir','g']
+        self.pkeys = ['d','g_dir','g']
     def __call__(self,p):
         g = p['g']
         d = p['d']
@@ -113,6 +125,7 @@ class ConstantCDDragForce(Force):
     def __init__(self):
         super().__init__(name='constant_CD_drag',short_name='drag')
         self.pkeys = ['d','Cd']
+        self.precalcs = [_calc_slip]
     def __call__(self,r):
         Cd = r['Cd']
         d = r['d']
@@ -120,6 +133,7 @@ class ConstantCDDragForce(Force):
         slip_mag = np.linalg.norm(slip,axis=-1)
         slip = np.moveaxis(slip,-1,0)
         drag = -1/8 * Cd * np.pi * d**2 * (slip*slip_mag)        
+        drag = np.moveaxis(drag,0,-1)
         return drag
     
 class DragForceSnyder2007(Force):    
@@ -152,13 +166,16 @@ class ViscousDragForce(Force):
 class ConstantCLLiftForce(Force):    
     def __init__(self):
         super().__init__(name='lift_bubble',short_name='lift')   
-        self.const_params = ['d','Cl']
-    def __call__(self,p):
-        Cl = p['Cl']
-        slip = p['slip']
-        vort = p['vort']
-        d = p['d']
-        return -1 * Cl * np.cross(slip,vort) * (d/2)**3*4./3*np.pi
+        self.pkeys = ['d','Cl']
+        self.precalcs = [_calc_slip,_calc_vort]
+    def __call__(self,r):
+        Cl = r['Cl']
+        slip = r['slip']
+        vort = r['vort']
+        d = r['d']
+        lift = -1 * Cl * np.moveaxis(np.cross(slip,vort),0,-1) * (d/2)**3*4./3*np.pi
+        lift = np.moveaxis(lift,-1,0)
+        return lift
     
 '''
 Helper functions for calculating forces

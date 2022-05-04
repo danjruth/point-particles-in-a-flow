@@ -203,7 +203,8 @@ class Force:
     def __init__(self,name='no_force',short_name='no_force'):
         self.name = name
         self.short_name = short_name
-        self.const_params = []
+        self.pkeys = []
+        self.precalcs = []
     
     def __call__(self,p):
         return np.nan
@@ -213,14 +214,20 @@ class EquationOfMotion:
     parameters and data in the dict p
     '''
     
+    additional_pkeys = []
+    
     def __init__(self,name='no_forces',forces=[]):
         self.name = name
         self.forces = forces
         
         # get list of particle params involved in each force
-        p = [f.pkeys for f in self.forces]
+        p = [f.pkeys for f in self.forces]        
+        self.p = list({x for l in p for x in l})  + self.additional_pkeys
         
-        self.p = list({x for l in p for x in l})
+        # get list of precalcs
+        precalcs = [f.precalcs for f in self.forces]
+        self.precalcs = list({x for l in precalcs for x in l})
+        
         self.force_names = [f.name for f in self.forces]
         self.force_short_names = [f.short_name for f in self.forces]
     
@@ -234,12 +241,20 @@ class EquationOfMotion:
         '''update the dict r by performing some calculations on it (ie adding
         an entry "vort" which is the vorticity, based on the entry "velgrad")
         '''
+        #return r
+        for pc in self.precalcs:
+            r = pc(r)
         return r
     
     def __call__(self,r,dt):
         r = self._pre_calculations(r)
-        sum_forces = np.sum([f(r) for f in self.forces],axis=0)
-        a = sum_forces / self.calc_m_eff(r)
+        forces = [f(r) for f in self.forces]
+        #print(np.shape(forces))
+        sum_forces = np.sum(forces,axis=0)
+        #print(np.shape(sum_forces))
+        a = np.moveaxis(sum_forces,0,-1) / self.calc_m_eff(r)
+        a = np.moveaxis(a,-1,0)
+        #print(np.shape(a))
         return r['v']+a*dt
     
 '''
@@ -282,8 +297,35 @@ class Simulation:
         r = {'v':self.v[ti,...]}
         for key in ['u','dudt','velgrad',]:
             r[key] = getattr(fs,key)
+        # for each param listed in the necessary ones for the eom
         for key in self.eom.p:
-            r[key] = getattr(self.p,key)
+            r[key] = self.p[key]
+        #print(self.eom.p)
+        #print(r)
+            
+        v_new = self.eom(r,self.s['dt']) # based on everything at this point in time
+        
+        x_new = self.x[ti,...]+v_new*self.s['dt']
+        
+        # for now, limit the x data to the values in eom.pos_lims
+        for i in range(3):
+            x_new[x_new[:,i]<self.vf.pos_lims[0][i],i] = self.vf.pos_lims[0][i]
+            x_new[x_new[:,i]>self.vf.pos_lims[1][i],i] = self.vf.pos_lims[1][i]
+
+        # store the data
+        self.u[ti+1,...] = r['u'].copy() # assigning field state at t[ti] to ti+1?
+        self.v[ti+1,...] = v_new.copy()
+        self.x[ti+1,...] = x_new.copy()
+        self.dudt[ti+1,...] = r['dudt'].copy()
+        self.velgrad[ti+1,...] = r['velgrad'].copy()
+        
+    def run(self,disp=False):
+        
+        for ti in np.arange(self.ti,self.s['n_t']-1,1):
+            if disp:
+                print('... time '+str(self.t[ti])+'/'+str(self.s['t_max']))
+            self._advance(ti)
+            self.ti = ti
 
 class SimulationOld:
     '''
