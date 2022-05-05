@@ -55,15 +55,15 @@ dt = 0.0001
 vf = gaussian.RandomGaussianVelocityField(n_modes=n_modes,u_rms=u_rms,L_int=L_int)
 vf.init_field()
 
-sim_params_a = dict(t_min=0,t_max=0.1,dt=dt/5,n=n,n_call_per_timestep=1)
-sim_params_b = dict(t_min=0,t_max=0.1,dt=dt,n=n,n_call_per_timestep=5)
+sim_params = dict(t_min=0,t_max=0.1,dt=dt,n=n,n_call_per_timestep=5)
 
-fig,ax = plt.subplots()
+sim = ppart.Simulation(vf,BasicEOM(),part_params,sim_params)
+sim.init_sim()
+sim.run(disp=True,save_every=50)
+sim.save_dict()
 
-for sim_params in [sim_params_a,sim_params_b]:
-    sim = ppart.Simulation(vf,BasicEOM(),part_params,sim_params)
-    sim.init_sim()    
-    sim.run()
-
-    ax.plot(sim.t,sim.v[:,0,0],'-x')
-     
+vf2 = gaussian.RandomGaussianVelocityField(n_modes=n_modes,u_rms=u_rms,L_int=L_int)
+vf2.init_field()
+sim2 = ppart.Simulation(vf2,BasicEOM(),part_params,sim_params)
+sim2.init_sim()
+sim2.from_dict()

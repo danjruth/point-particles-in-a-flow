@@ -263,12 +263,16 @@ Class for a simulation
 
 class Simulation:
     
-    def __init__(self,velocity_field,equation_of_motion,particle_params,simulation_params,):
+    def __init__(self,velocity_field,equation_of_motion,particle_params,simulation_params,fpath=None):
         
         self.vf = velocity_field
         self.eom = equation_of_motion
         self.p = particle_params
         self.s = simulation_params
+        
+        if fpath is None:
+            fpath = 'test_save.pkl'
+        self.fpath=fpath
         
         # multiple integrations per timestep
         if 'n_call_per_timestep' not in self.s:
@@ -338,13 +342,46 @@ class Simulation:
         self.dudt[ti+1,...] = r['dudt'].copy()
         self.velgrad[ti+1,...] = r['velgrad'].copy()
         
-    def run(self,disp=False):
+    def run(self,disp=False,save_every=np.nan):
         
         for ti in np.arange(self.ti,self.s['n_t']-1,1):
             if disp:
                 print('... time '+str(self.t[ti])+'/'+str(self.s['t_max']))
             self._advance(ti)
             self.ti = ti
+            
+            if ti%save_every == 0:
+                self.save_dict()
+            
+    def to_dict(self):
+        '''Put the bubble parameters, simulation parameters, and results of 
+        the simulation in a dict. Save just the names of the velocity field
+        and the equation of motion (since these classes can't be pickled
+        reliably)
+        '''        
+        attrs_save = ['s','p',
+                      't','ti',
+                      'u','v','x','dudt','velgrad']
+        d = {attr:getattr(self,attr) for attr in attrs_save}        
+        d['PARAMS_vf'] = self.vf.to_dict()        
+        return d
+    
+    def save_dict(self,fpath=None):
+        if fpath is None:
+            fpath = self.fpath
+        d = self.to_dict()
+        with open(fpath,'wb') as f:
+            pickle.dump(d,f)
+            
+    def from_dict(self,d=None):
+        if d is None:
+            d = self.fpath
+        if type(d) is str:
+            d = pickle.load(open(d,'rb'))
+        for key in d:
+            setattr(self,key,d[key])
+        for key in d['PARAMS_vf']:
+            setattr(self.vf,key,d['PARAMS_vf'][key])
 
 class SimulationOld:
     '''
