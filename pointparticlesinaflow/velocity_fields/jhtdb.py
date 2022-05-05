@@ -7,6 +7,7 @@ Created on Mon Jun 29 16:50:22 2020
 
 import numpy as np
 from ..classes import VelocityField
+import time
 
 try:
     from pyJHTDB import libJHTDB
@@ -88,6 +89,7 @@ class JHTDBVelocityField(VelocityField):
                 data = lJHTDB.getData(t.astype(np.float32),point_coords=x.copy().astype(np.float32),**kwargs)
             except:
                 print('getData failed; trying again')
+                time.sleep(1)
                 data = None
         return data
             
