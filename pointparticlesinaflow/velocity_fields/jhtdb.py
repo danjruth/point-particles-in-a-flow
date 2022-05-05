@@ -88,13 +88,13 @@ class JHTDBVelocityField(VelocityField):
     if lJHTDB_available:
         
         def get_velocity(self,t,x):
-            vel = self._getData_wrapper(t, point_coords=x.copy().astype(np.float32), data_set=self.data_set, getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
+            vel = self._getData_wrapper(t, x, data_set=self.data_set, getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
             return vel
     
         def get_velocity_gradient(self,t,x):
                     
             # query the data
-            result_grad = self._getData_wrapper(t,x.copy().astype(np.float32), data_set=self.data_set,sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
+            result_grad = self._getData_wrapper(t, x, data_set=self.data_set,sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
             #result_grad = lJHTDB.getData(t, x.copy().astype(np.float32), data_set=self.data_set,sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
             
             # put it into the correct shape
