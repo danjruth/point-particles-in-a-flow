@@ -59,7 +59,8 @@ sim_params = dict(t_min=0,t_max=0.1,dt=dt,n=n,n_call_per_timestep=5)
 
 sim = ppart.Simulation(vf,BasicEOM(),part_params,sim_params)
 sim.init_sim()
-sim.run(disp=True,save_every=50)
+sim.initialize_to_carrier_velocity()
+sim.run(disp=False,save_every=50)
 sim.save_dict()
 
 vf2 = gaussian.RandomGaussianVelocityField(n_modes=n_modes,u_rms=u_rms,L_int=L_int)

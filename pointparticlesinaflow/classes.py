@@ -298,6 +298,14 @@ class Simulation:
         self.dudt = np.zeros_like(self.x)
         self.velgrad = np.zeros((self.s['n_t'],self.s['n'],3,3))
         
+    def initialize_to_carrier_velocity(self):
+        '''
+        Set the initial velocities to the carrier fluid velocity at t=t_min
+        '''
+        u_t0 = self.vf.get_velocity(self.t[0],self.x[0,:,:])
+        self.v[0,:,:] = u_t0
+        
+        
     def _update(self,t,x,v):
         '''
         Calculate the new position and velocities given current time, position,
