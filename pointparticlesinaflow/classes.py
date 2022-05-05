@@ -351,6 +351,8 @@ class Simulation:
             
             if ti%save_every == 0:
                 self.save_dict()
+        
+        self.save_dict()
             
     def to_dict(self):
         '''Put the bubble parameters, simulation parameters, and results of 
