@@ -75,22 +75,27 @@ class JHTDBVelocityField(VelocityField):
             
         new_save_vars = list(JHTDB_DATASET_PARAMS[data_set].keys())
         self._save_vars = self._save_vars + new_save_vars
+        
+    def _getData_wrapper(self,t,x,**kwargs):
+        lJHTDB = self.lJHTDB
+        try:
+            data = lJHTDB.getData(t,point_coords=x.copy().astype(np.float32),**kwargs)
+            return data
+        except:
+            print('getData failed; trying again')
+            self._getData_wrapper(t,x,**kwargs)
             
     if lJHTDB_available:
         
-        def get_velocity(self,t,x,lJHTDB=None):
-            if lJHTDB is None:
-                lJHTDB = self.lJHTDB
-            vel = lJHTDB.getData(t, point_coords=x.copy().astype(np.float32), data_set=self.data_set, getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
+        def get_velocity(self,t,x):
+            vel = self._getData_wrapper(t, point_coords=x.copy().astype(np.float32), data_set=self.data_set, getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
             return vel
     
-        def get_velocity_gradient(self,t,x,lJHTDB=None):
-            
-            if lJHTDB is None:
-                lJHTDB = self.lJHTDB
-        
+        def get_velocity_gradient(self,t,x):
+                    
             # query the data
-            result_grad = lJHTDB.getData(t, x.copy().astype(np.float32), data_set=self.data_set,sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
+            result_grad = self._getData_wrapper(t,x.copy().astype(np.float32), data_set=self.data_set,sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
+            #result_grad = lJHTDB.getData(t, x.copy().astype(np.float32), data_set=self.data_set,sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
             
             # put it into the correct shape
             result_grad_new = np.zeros((len(x),3,3)).astype(np.float32)
@@ -101,10 +106,7 @@ class JHTDBVelocityField(VelocityField):
             return result_grad_new
         
         def get_dudt(self,t,x,u_t=None,delta_t=1e-4,lJHTDB=None):
-            
-            if lJHTDB is None:
-                lJHTDB = self.lJHTDB
-            
+
             if u_t is None:
                 u_t = self.get_velocity(t,x,)
             u_tplusdeltat = self.get_velocity(t+delta_t,x,)
