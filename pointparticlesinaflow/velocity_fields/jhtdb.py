@@ -77,13 +77,19 @@ class JHTDBVelocityField(VelocityField):
         self._save_vars = self._save_vars + new_save_vars
         
     def _getData_wrapper(self,t,x,**kwargs):
+        '''
+        Wrapper for self.lJHTDB.getData that converts x to the right type, and
+        keeps trying getData until it works.
+        '''
         lJHTDB = self.lJHTDB
-        try:
-            data = lJHTDB.getData(t,point_coords=x.copy().astype(np.float32),**kwargs)
-            return data
-        except:
-            print('getData failed; trying again')
-            self._getData_wrapper(t,x,**kwargs)
+        data = None
+        while data is None:
+            try:
+                data = lJHTDB.getData(t.astype(np.float32),point_coords=x.copy().astype(np.float32),**kwargs)
+            except:
+                print('getData failed; trying again')
+                data = None
+        return data
             
     if lJHTDB_available:
         
