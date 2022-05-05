@@ -270,6 +270,12 @@ class Simulation:
         self.p = particle_params
         self.s = simulation_params
         
+        # multiple integrations per timestep
+        if 'n_call_per_timestep' not in self.s:
+            self.s['n_call_per_timestep'] = 1
+        self.s['dt_int'] = self.s['dt']/self.s['n_call_per_timestep']
+        
+        
     @property
     def pkeys(self):
         return list(self.p.keys())
@@ -288,24 +294,37 @@ class Simulation:
         self.u = np.zeros_like(self.x)
         self.dudt = np.zeros_like(self.x)
         self.velgrad = np.zeros((self.s['n_t'],self.s['n'],3,3))
-
-    def _advance(self,ti):
         
-        fs = self.vf.get_field_state(self.t[ti],self.x[ti,...])
+    def _update(self,t,x,v):
+        '''
+        Calculate the new position and velocities given current time, position,
+        and velocities
+        '''
+        
+        fs = self.vf.get_field_state(t,x)
         
         # add entries to r
-        r = {'v':self.v[ti,...]}
+        r = {'v':v}
         for key in ['u','dudt','velgrad',]:
             r[key] = getattr(fs,key)
         # for each param listed in the necessary ones for the eom
         for key in self.eom.p:
             r[key] = self.p[key]
-        #print(self.eom.p)
-        #print(r)
             
-        v_new = self.eom(r,self.s['dt']) # based on everything at this point in time
+        v_new = self.eom(r,self.s['dt_int']) # based on everything at this point in time
+        x_new = x+v_new*self.s['dt_int']
         
-        x_new = self.x[ti,...]+v_new*self.s['dt']
+        return x_new, v_new, r
+
+    def _advance(self,ti):
+        
+        x_old = self.x[ti,...]
+        v_old = self.v[ti,...]
+        for tii in range(self.s['n_call_per_timestep']):
+            t_val = self.t[ti] + tii*self.s['dt']/self.s['n_call_per_timestep']
+            x_old, v_old, r = self._update(t_val,x_old,v_old)
+        x_new = x_old
+        v_new = v_old 
         
         # for now, limit the x data to the values in eom.pos_lims
         for i in range(3):

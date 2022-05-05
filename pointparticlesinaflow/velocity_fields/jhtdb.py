@@ -12,6 +12,7 @@ try:
     from pyJHTDB import libJHTDB
     lJHTDB = libJHTDB()
     lJHTDB.initialize(exit_on_error=True)
+    lJHTDB.add_token(r'edu.princeton.druth-29b2b7ef')
     lJHTDB_available = True
 except ImportError:
     print('Unable to import pyJHTDB and initialize')
