@@ -25,7 +25,7 @@ class BasicEOM(EquationOfMotion):
     def __init__(self,):
         super().__init__(name='basic_eom',
                          forces=[#equations.DragForceSnyder2007(),
-                                 equations.ConstantCDDragForce(),
+                                 equations.ViscousDragForce(),
                                  #equations.ConstantCLLiftForce(),
                                  equations.PressureForceBubble(),
                                  equations.GravForceBubble()])

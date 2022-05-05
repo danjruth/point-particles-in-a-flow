@@ -151,20 +151,21 @@ class DragForceSnyder2007(Force):
         drag = calc_drag_force(slip,d,Cd)
         return drag
 
-# class ViscousDragForce(Force):    
-#     def __init__(self):
-#         super().__init__(name='viscous_drag',short_name='drag')
-#         self.const_params = ['d','nu']
-#     def __call__(self,p):
-#         nu = p['nu']
-#         d = p['d']
-#         slip = p['slip']
-#         slip_norm = np.linalg.norm(slip,axis=-1)
-#         Re = slip_norm * d / nu # [n_bub] or [n_t,n_bub]
-#         Re[Re==0] = 1 # doesn't matter so avoid divide by 0
-#         Cd = 24./Re
-#         Cd = np.moveaxis(np.array([Cd]*3),0,-1) # [n_bub,3] or [n_t,n_bub,3]
-#         return calc_drag_force(slip,d,Cd)
+class ViscousDragForce(Force):    
+    def __init__(self):
+        super().__init__(name='viscous_drag',short_name='drag')
+        self.pkeys = ['d','nu']
+        self.precalcs = [_calc_slip]
+    def __call__(self,p):
+        nu = p['nu']
+        d = p['d']
+        slip = p['slip']
+        slip_norm = np.linalg.norm(slip,axis=-1)
+        Re = slip_norm * d / nu # [n_bub] or [n_t,n_bub]
+        Re[Re==0] = 1 # doesn't matter so avoid divide by 0
+        Cd = 24./Re
+        Cd = np.moveaxis(np.array([Cd]*3),0,-1) # [n_bub,3] or [n_t,n_bub,3]
+        return calc_drag_force(slip,d,Cd)
 
 class ConstantCLLiftForce(Force):    
     def __init__(self):
