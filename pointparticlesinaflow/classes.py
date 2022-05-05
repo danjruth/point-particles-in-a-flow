@@ -274,17 +274,16 @@ class Simulation:
             fpath = 'test_save.pkl'
         self.fpath=fpath
         
-        # multiple integrations per timestep
-        if 'n_call_per_timestep' not in self.s:
-            self.s['n_call_per_timestep'] = 1
-        self.s['dt_int'] = self.s['dt']/self.s['n_call_per_timestep']
-        
-        
     @property
     def pkeys(self):
         return list(self.p.keys())
         
     def init_sim(self):
+        
+        # multiple integrations per timestep
+        if 'n_call_per_timestep' not in self.s:
+            self.s['n_call_per_timestep'] = 1
+        self.s['dt_int'] = self.s['dt']/self.s['n_call_per_timestep']
         
         self.t = np.arange(self.s['t_min'],self.s['t_max'],self.s['dt'])
         self.s['n_t'] = len(self.t)
