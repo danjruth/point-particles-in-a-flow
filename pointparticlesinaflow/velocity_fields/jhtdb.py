@@ -81,7 +81,10 @@ class JHTDBVelocityField(VelocityField):
         def get_velocity(self,t,x,lJHTDB=None):
             if lJHTDB is None:
                 lJHTDB = self.lJHTDB
-            return lJHTDB.getData(t, point_coords=x.copy().astype(np.float32), data_set=self.data_set, getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
+            print('...starting query')
+            vel = lJHTDB.getData(t, point_coords=x.copy().astype(np.float32), data_set=self.data_set, getFunction='getVelocity', sinterp='Lag4', tinterp='PCHIPInt')
+            print('...query complete!')
+            return vel
     
         def get_velocity_gradient(self,t,x,lJHTDB=None):
             
@@ -89,7 +92,9 @@ class JHTDBVelocityField(VelocityField):
                 lJHTDB = self.lJHTDB
         
             # query the data
+            print('...starting query')
             result_grad = lJHTDB.getData(t, x.copy().astype(np.float32), data_set=self.data_set,sinterp='FD4Lag4', tinterp='PCHIPInt',getFunction='getVelocityGradient')
+            print('...query complete!')
             
             # put it into the correct shape
             result_grad_new = np.zeros((len(x),3,3)).astype(np.float32)

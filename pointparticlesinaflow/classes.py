@@ -190,9 +190,9 @@ class FieldState:
         
         self.t = t
         self.x = x
-        self.u = velocity_field.get_velocity(t,x)
-        self.dudt = velocity_field.get_dudt(t,x,u_t=self.u)
+        self.u = velocity_field.get_velocity(t,x)        
         self.velgrad = velocity_field.get_velocity_gradient(t,x)
+        self.dudt = velocity_field.get_dudt(t,x,u_t=self.u)
         
 '''
 Class for the equation of motion
