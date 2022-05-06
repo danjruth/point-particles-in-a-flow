@@ -183,8 +183,8 @@ class ConstantCLLiftForce(Force):
         slip = r['slip']
         vort = r['vort']
         d = r['d']
-        lift = -1 * Cl * np.moveaxis(np.cross(slip,vort),0,-1) * (d/2)**3*4./3*np.pi
-        lift = np.moveaxis(lift,-1,0)
+        lift = -1 * Cl * np.moveaxis(np.cross(slip,vort),-2,-1) * (d/2)**3*4./3*np.pi
+        lift = np.moveaxis(lift,-1,-2)
         return lift
     
 '''

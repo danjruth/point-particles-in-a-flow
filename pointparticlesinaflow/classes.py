@@ -418,6 +418,8 @@ class Simulation:
             self.ti = ti
             
             if ti%save_every == 0:
+                if disp:
+                    print('... saving!')
                 self.save_dict()
         
         self.save_dict()
