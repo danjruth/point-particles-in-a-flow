@@ -107,8 +107,11 @@ class PressureForceBubble(Force):
         Cm = p['Cm']
         u_times_deldotu = np.array([np.sum(velgrad[...,i,:]*u,axis=-1) for i in range(3)])
         u_times_deldotu = np.moveaxis(u_times_deldotu,0,-1)
-        press = (1+Cm) * (d/2)**3*4./3*np.pi * np.moveaxis((dudt + u_times_deldotu),0,-1)
-        press = np.moveaxis(press,-1,0)
+        #print(np.shape(u_times_deldotu))
+        #print(np.shape(dudt))
+        #print(np.shape(d))
+        press = (1+Cm) * (d/2)**3*4./3*np.pi * np.moveaxis((dudt + u_times_deldotu),-2,-1)
+        press = np.moveaxis(press,-1,-2)
         return press
 
 class GravForceBubble(Force):    
@@ -151,7 +154,7 @@ class DragForceSnyder2007(Force):
         drag = calc_drag_force(slip,d,Cd)
         return drag
 
-class ViscousDragForce(Force):    
+class ViscousDragForce(Force):
     def __init__(self):
         super().__init__(name='viscous_drag',short_name='drag')
         self.pkeys = ['d','nu']
@@ -160,12 +163,15 @@ class ViscousDragForce(Force):
         nu = p['nu']
         d = p['d']
         slip = p['slip']
-        slip_norm = np.linalg.norm(slip,axis=-1)
-        Re = slip_norm * d / nu # [n_bub] or [n_t,n_bub]
-        Re[Re==0] = 1 # doesn't matter so avoid divide by 0
-        Cd = 24./Re
-        Cd = np.moveaxis(np.array([Cd]*3),0,-1) # [n_bub,3] or [n_t,n_bub,3]
-        return calc_drag_force(slip,d,Cd)
+        # slip_norm = np.linalg.norm(slip,axis=-1)
+        # Re = slip_norm * d / nu # [n_bub] or [n_t,n_bub]
+        # Re[Re==0] = 1 # doesn't matter so avoid divide by 0
+        # Cd = 24./Re
+        # Cd = np.moveaxis(np.array([Cd]*3),0,-1) # [n_bub,3] or [n_t,n_bub,3]
+        #drag = calc_drag_force(slip,d,Cd)
+        drag = -3 * np.pi * nu * d * np.moveaxis(slip,-2,-1)
+        drag = np.moveaxis(drag,-1,-2)
+        return drag
 
 class ConstantCLLiftForce(Force):    
     def __init__(self):

@@ -261,6 +261,39 @@ class EquationOfMotion:
 Class for a simulation
 '''
 
+def define_timesteps(s):
+    '''
+    Make sure that the simulation parameters in s contain the correct
+    information on the different timesteps
+
+    Parameters
+    ----------
+    s : dict
+        Simulation parameters, containing 'dt_int', 'n_int_per_call', and
+        'n_call_per_store'
+
+    Returns
+    -------
+    s : dict
+        Simulation parameters, with the correct info about timesteps.
+    '''
+    
+    if 'n_call_per_store' not in s:
+        s['n_call_per_store'] = 1
+    if 'n_int_per_call' not in s:
+        s['n_int_per_call'] = 1
+    
+    s['n_int_per_store'] = s['n_call_per_store'] * s['n_int_per_call']
+    
+    if 'dt_int' in s:
+        s['dt_call'] = s['dt_int'] * s['n_int_per_call']
+    elif 'dt_call' in s:
+        s['dt_int'] = s['dt_call'] / s['n_int_per_call']
+    
+    s['dt'] = s['dt_int'] * s['n_int_per_store']
+    
+    return s
+
 class Simulation:
     
     def __init__(self,velocity_field,equation_of_motion,particle_params,simulation_params,fpath=None):
@@ -280,10 +313,7 @@ class Simulation:
         
     def init_sim(self):
         
-        # multiple integrations per timestep
-        if 'n_call_per_timestep' not in self.s:
-            self.s['n_call_per_timestep'] = 1
-        self.s['dt_int'] = self.s['dt']/self.s['n_call_per_timestep']
+        self.s = define_timesteps(self.s)
         
         self.t = np.arange(self.s['t_min'],self.s['t_max'],self.s['dt'])
         self.s['n_t'] = len(self.t)
@@ -306,36 +336,66 @@ class Simulation:
         self.v[0,:,:] = u_t0
         
         
-    def _update(self,t,x,v):
-        '''
-        Calculate the new position and velocities given current time, position,
-        and velocities
-        '''
+    # def _update(self,t,x,v):
+    #     '''
+    #     Calculate the new position and velocities given current time, position,
+    #     and velocities
+    #     '''
         
-        fs = self.vf.get_field_state(t,x)
+    #     fs = self.vf.get_field_state(t,x)
         
-        # add entries to r
-        r = {'v':v}
-        for key in ['u','dudt','velgrad',]:
-            r[key] = getattr(fs,key)
-        # for each param listed in the necessary ones for the eom
-        for key in self.eom.p:
-            r[key] = self.p[key]
+    #     # add entries to r
+    #     r = {'v':v}
+    #     for key in ['u','dudt','velgrad',]:
+    #         r[key] = getattr(fs,key)
+    #     # for each param listed in the necessary ones for the eom
+    #     for key in self.eom.p:
+    #         r[key] = self.p[key]
             
-        v_new = self.eom(r,self.s['dt_int']) # based on everything at this point in time
-        x_new = x+v_new*self.s['dt_int']
+    #     v_new = self.eom(r,self.s['dt_int']) # based on everything at this point in time
+    #     x_new = x+v_new*self.s['dt_int']
         
-        return x_new, v_new, r
+    #     return x_new, v_new, r
 
     def _advance(self,ti):
-        
-        x_old = self.x[ti,...]
-        v_old = self.v[ti,...]
-        for tii in range(self.s['n_call_per_timestep']):
-            t_val = self.t[ti] + tii*self.s['dt']/self.s['n_call_per_timestep']
-            x_old, v_old, r = self._update(t_val,x_old,v_old)
-        x_new = x_old
-        v_new = v_old 
+        '''
+        Advance the simulation by time dt, which is the timestep at which the 
+        simulation data is stored.
+
+        Parameters
+        ----------
+        ti : int
+            The index of the time of this stored timestep.
+        '''
+        x = self.x[ti,...]
+        v = self.v[ti,...]
+        for ti_call in range(self.s['n_call_per_store']):
+            # time at which the velocity field is called
+            tval_call = self.t[ti] + ti_call * self.s['dt_int'] * self.s['n_call_per_store']
+            
+            # the velocity field at this time the starting particle positions
+            fs = self.vf.get_field_state(tval_call,x)
+            
+            # add entries to r
+            r = {'v':v}
+            for key in ['u','dudt','velgrad',]:
+                r[key] = getattr(fs,key)
+            # for each param listed in the necessary ones for the eom
+            for key in self.eom.p:
+                r[key] = self.p[key]
+            
+            # using fixed carrier fluid velocities, update the particle velocities
+            for ti_int in range(self.s['n_int_per_call']):
+                
+                # update the velocity field to get a slightly more accurate one
+                r['u'] = r['u'] + self.s['dt_int']*r['dudt']
+                
+                v = self.eom(r,self.s['dt_int']) # based on everything at this point in time
+                x = x+v*self.s['dt_int']
+                r['v'] = v
+                
+        x_new = x
+        v_new = v
         
         # for now, limit the x data to the values in eom.pos_lims
         for i in range(3):
@@ -391,6 +451,33 @@ class Simulation:
             setattr(self,key,d[key])
         for key in d['PARAMS_vf']:
             setattr(self.vf,key,d['PARAMS_vf'][key])
+            
+    def _calc_forces_post(self,):
+        '''Compute the forces acting on the particle, and rotate all vectors to
+        the gravity-aligned coordinate system
+        '''
+
+        # calculate forces over time
+        p = {'u':self.u,'v':self.v,'dudt':self.dudt,'velgrad':self.velgrad}
+        for key in self.eom.p:
+            p[key] = self.p[key]
+        p = self.eom._pre_calculations(p)
+        forces = {f.short_name:f(p) for f in self.eom.forces}
+        # add time dimension if necessary (ie for grav force)
+        for f in forces:
+            if forces[f].ndim==2:
+                forces[f] = np.array([forces[f]]*len(self.t))
+        self.forces = forces
+        # set force as attributes of sim
+        #[setattr(self,key,forces[key]) for key in forces]
+            
+def sim_from_dict(d,velocity_field,equation_of_motion):
+    '''
+    Create an instance of a simulation with the parameters stored in a dict
+    '''
+    sim = Simulation(velocity_field,equation_of_motion,{},{})
+    sim.from_dict(d)
+    return d    
 
 class SimulationOld:
     '''
