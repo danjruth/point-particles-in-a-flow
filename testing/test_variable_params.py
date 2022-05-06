@@ -56,7 +56,7 @@ dt = 0.001
 vf = gaussian.RandomGaussianVelocityField(n_modes=n_modes,u_rms=u_rms,L_int=L_int)
 vf.init_field()
 
-sim_params = dict(t_min=0,t_max=0.1,dt_call=1e-3,n=n,n_call_per_store=1,n_int_per_call=100)
+sim_params = dict(t_min=0,t_max=0.1,dt_call=1e-3,n=n,n_call_per_store=1,n_int_per_call=1000)
 sim = ppart.Simulation(vf,BasicEOM(),part_params,sim_params.copy())
 sim.init_sim()
 sim.x[0,:,:] = np.random.uniform(0,vf.L_char*10,size=(n,3))

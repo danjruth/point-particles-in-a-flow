@@ -9,6 +9,7 @@ import numpy as np
 import pickle
 from scipy.spatial.transform import Rotation
 from pointparticlesinaflow import data, analysis
+import time
 #from .equations import quiescent_speed
 
 '''
@@ -411,10 +412,15 @@ class Simulation:
         
     def run(self,disp=False,save_every=np.nan):
         
-        for ti in np.arange(self.ti,self.s['n_t']-1,1):
-            if disp:
-                print('... time '+str(self.t[ti])+'/'+str(self.s['t_max']))
+        for ti in np.arange(self.ti,self.s['n_t']-1,1):            
+            
+            time_0 = time.time()
             self._advance(ti)
+            time_1 = time.time()
+            
+            if disp:
+                print('... time '+str(self.t[ti])+'/'+str(self.s['t_max'])+', took '+'{:1.3f}'.format(time_1-time_0)+' s.')
+            
             self.ti = ti
             
             if ti%save_every == 0:
