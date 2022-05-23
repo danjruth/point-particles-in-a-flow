@@ -385,7 +385,7 @@ class Simulation:
             for key in self.eom.p:
                 r[key] = self.p[key]
             
-            # using fixed carrier fluid velocities, update the particle velocities
+            # using approx. fixed carrier fluid velocities, update the particle velocities
             for ti_int in range(self.s['n_int_per_call']):
                 
                 # update the velocity field to get a slightly more accurate one

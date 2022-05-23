@@ -7,6 +7,7 @@ Created on Tue Feb  9 15:11:13 2021
 
 import numpy as np
 from pointparticlesinaflow import EquationOfMotion, Force
+import scipy.optimize
 
 '''
 Classes for equations of motion
@@ -231,6 +232,22 @@ def calc_Cd_Snyder(Re):
     Cd[Re==0] = 1 # value doesn't matter, just can't be nan or inf
     
     # give it a "component" axis
-    Cd = np.moveaxis([Cd]*3,0,-1) # [bub,component] or [time,bub,component]
+    #Cd = np.moveaxis([Cd]*3,0,-1) # [bub,component] or [time,bub,component]
     
     return Cd
+
+def calc_vq_Snyder(d,nu,g,):
+    buoyancy_force = g * np.pi * (d/2)**3 * (4./3)
+    def calc_resid(v_q):            
+        Re = v_q*d/nu
+        Cd = calc_Cd_Snyder(Re)[0]        
+        drag_force = calc_drag_force(np.array([0,0,v_q]),d,Cd)[-1] * -1
+        return np.abs(np.mean((drag_force-buoyancy_force)))
+    res = scipy.optimize.minimize(calc_resid,x0=[0.5,],tol=buoyancy_force/100000,method='Powell',bounds=[(0,np.inf)]) # ,tol=1e-2
+    assert res.success
+    v_q = res.x[0]
+    return v_q
+
+'''
+Other functions
+'''
