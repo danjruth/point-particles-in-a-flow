@@ -245,7 +245,7 @@ def calc_vq_Snyder(d,nu,g,):
         return np.abs(np.mean((drag_force-buoyancy_force)))
     res = scipy.optimize.minimize(calc_resid,x0=[0.5,],tol=buoyancy_force/100000,method='Powell',bounds=[(0,np.inf)])
     assert res.success
-    v_q = res.x[0]
+    v_q = res.x
     return v_q
 
 '''
