@@ -425,7 +425,7 @@ class Simulation:
             
             if ti%save_every == 0:
                 if disp:
-                    print('... saving!')
+                    print('... saving to '+self.fpath)
                 self.save_dict()
         
         self.save_dict()
