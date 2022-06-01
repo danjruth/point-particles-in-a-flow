@@ -239,11 +239,12 @@ def calc_Cd_Snyder(Re):
 def calc_vq_Snyder(d,nu,g,):
     buoyancy_force = g * np.pi * (d/2)**3 * (4./3)
     def calc_resid(v_q):            
+        v_q = np.squeeze(v_q)
         Re = v_q*d/nu
         Cd = calc_Cd_Snyder(Re)[0]
         drag_force = calc_drag_force(np.array([0,0,v_q]),d,Cd)[-1] * -1
-        return np.abs(np.mean((drag_force-buoyancy_force)))
-    res = scipy.optimize.minimize(calc_resid,x0=[0.5,],tol=buoyancy_force/100000,method='Powell',bounds=[(0,np.inf)])
+        return np.squeeze(np.abs(np.mean((drag_force-buoyancy_force))))
+    res = scipy.optimize.minimize(calc_resid,x0=[0.5,],tol=buoyancy_force/100000,method='SLSQP',bounds=[(0,np.inf)])
     assert res.success
     v_q = res.x
     return v_q

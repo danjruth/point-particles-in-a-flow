@@ -419,7 +419,7 @@ class Simulation:
             time_1 = time.time()
             
             if disp:
-                print('... time '+str(self.t[ti])+'/'+str(self.s['t_max'])+', took '+'{:1.3f}'.format(time_1-time_0)+' s.')
+                print(self.fpath+' ... time '+str(self.t[ti])+'/'+str(self.s['t_max'])+', took '+'{:1.3f}'.format(time_1-time_0)+' s.')
             
             self.ti = ti
             
